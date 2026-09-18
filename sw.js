@@ -3,8 +3,9 @@
    - Precachea el "esqueleto" de la app (HTML, CDN, iconos).
    - Navegación: red primero → caché si no hay internet.
    - Las llamadas a Firebase (datos/auth) NUNCA se cachean.
+   v4 — Bump de caché para desplegar fixes de DB null (v2.12)
    ================================================================ */
-const CACHE='mantcap-v2';
+const CACHE='mantcap-v4';
 const PRECACHE=[
   './',
   './index.html',

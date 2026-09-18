@@ -214,7 +214,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
       <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
     </div>
-    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.10.1 PWA</b></div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.11</b></div>
   </div>
 </div>
 
@@ -240,16 +240,18 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 <script>
 /* ================================================================
    MantCAP · PWA de gestión de mantenimiento
-   v2.10.1 — PWA: manifest + service worker + iconos integrados.
-   v2.10 — Eliminado "Fijar en Resumen"; métricas en tarjetas
-           agrupadas por tipo con casillas.
+   v2.11 — Sincronización manual (botón en admin y técnico),
+           estado de conexión en el perfil del técnico, última
+           sincronización, técnicos sincronizan sus recorridos.
+   v2.10.1 — PWA (manifest + SW + iconos)
+   v2.10 — Métricas en tarjetas agrupadas; sin "Fijar en Resumen"
    v2.9 — Historial con filtro de fechas
    v2.8 — Gestión de usuarios técnicos
    v2.7 — CPP con rangos oficiales actualizados
    v2.5–2.6 — Firebase, informes, gráficas comparativas
    v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
    ================================================================ */
-const APP_VERSION='v2.10.1';
+const APP_VERSION='v2.11';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -615,7 +617,7 @@ function seedDB(){
     ...DEF_CAP.map(d=>qFromDef(d,'CAP')),
     ...DEF_CPP.map(d=>qFromDef(d,'CPP'))
   ].map(q=>({...q,id:q.loc.toLowerCase()+(n++)}));
-  DB={v:24,qseq:n,questions,settings:{pinned:[]},
+  DB={v:25,qseq:n,questions,settings:{pinned:[]},
     users:[
       {u:'admin',p:'admin123',role:'admin',name:'Administrador',active:true,createdAt:new Date().toISOString()},
       ...TECH_NAMES.map(t=>({u:userFromName(t),p:'1234',role:'tech',name:t,active:true,createdAt:new Date().toISOString()}))
@@ -729,6 +731,7 @@ function loadDB(){
   migrateUsers();
 }
 function saveDB(){
+  DB.updatedAt=new Date().toISOString(); /* marca de tiempo para conflictos */
   localStorage.setItem(KEY,JSON.stringify(DB));
   if(window.FirebaseSync) FirebaseSync.push(DB);
 }
@@ -1691,9 +1694,15 @@ function delUser(uu){
     ()=>{DB.users=DB.users.filter(x=>!(x.u===uu&&x.role==='tech'));saveDB();toast('Técnico eliminado','ok');renderUsers();},'Eliminar');
 }
 
-/* ================== ADMIN · AJUSTES ================== */
+/* ================== ADMIN · AJUSTES (v2.11: estado conexión + sync manual) ================== */
 function renderSettings(){
   const fbOK=window.FirebaseSync&&FirebaseSync.isConfigured();
+  const enLinea=fbOK&&FirebaseSync.isOnline();
+  const ultimo=fbOK?FirebaseSync.lastSync():null;
+  let estadoNube,colorNube;
+  if(!fbOK){ estadoNube='No configurado — trabajando solo con este dispositivo'; colorNube='var(--warn)'; }
+  else if(enLinea){ estadoNube='Configurado — en línea, sincronizando con Firebase Firestore'; colorNube='var(--ok)'; }
+  else{ estadoNube='Configurado — sin conexión: los cambios se guardan en este dispositivo y se sincronizarán al reconectar'; colorNube='var(--warn)'; }
   $('#content').innerHTML=`
   <div class="grid g2">
     <div class="card"><div class="hd"><h3>Usuarios y acceso</h3></div><div class="bd">
@@ -1708,9 +1717,11 @@ function renderSettings(){
         <input type="file" id="impFile" class="hidden" accept=".json" onchange="importDB(this)">
       </div>
     </div></div>
-    <div class="card"><div class="hd"><h3>Sincronización en la nube ☁️</h3></div><div class="bd">
-      <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Estado: <b style="color:${fbOK?'var(--ok)':'var(--warn)'}">${fbOK?'Configurado — los datos se sincronizan con Firebase Firestore':'No configurado — trabajando solo con este dispositivo'}</b></p>
-      <p style="font-size:12.5px;color:var(--mut)">Sin internet la app sigue funcionando normalmente y sincroniza al reconectar.</p>
+    <div class="card"><div class="hd"><h3>Sincronización en la nube ☁️</h3>
+      <span class="sp"><button class="btn ${enLinea?'btn-pri':'btn-gho'} btn-sm" id="btnSync" onclick="doManualSync()">☁️ Sincronizar ahora</button></span></div><div class="bd">
+      <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Estado: <b style="color:${colorNube}">${estadoNube}</b></p>
+      ${ultimo?`<p style="font-size:13px;color:var(--mut);margin-bottom:10px">Última sincronización: <b>${fmtDT(ultimo)}</b></p>`:''}
+      <p style="font-size:12.5px;color:var(--mut)">La app también sincroniza automáticamente al guardar y al reconectar. Usa el botón para forzarla ahora.</p>
     </div></div>
     <div class="card"><div class="hd"><h3>Zona de riesgo</h3></div><div class="bd">
       <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Restablece las preguntas y regenera datos demo. Se pierden los recorridos guardados.</p>
@@ -1718,16 +1729,36 @@ function renderSettings(){
     </div></div>
     <div class="card" style="grid-column:1/-1"><div class="hd"><h3>Acerca de</h3></div><div class="bd" style="font-size:13px;color:var(--mut);line-height:1.8">
       <b style="color:var(--ink)">MantCAP ${APP_VERSION}</b> · Gestión de mantenimiento CAP & CPP<br>
-      <b style="color:var(--ink)">v2.10.1:</b> PWA instalable (manifest + service worker + iconos).<br>
-      <b style="color:var(--ink)">v2.10:</b> métricas en tarjetas agrupadas; eliminado "Fijar en Resumen".<br>
-      <b style="color:var(--ink)">v2.9:</b> historial con filtro de fechas.<br>
-      <b style="color:var(--ink)">v2.8:</b> gestión de usuarios técnicos.<br>
+      <b style="color:var(--ink)">v2.11:</b> sincronización manual con botón (admin y técnico), estado de conexión y última sincronización.<br>
+      <b style="color:var(--ink)">v2.10:</b> métricas en tarjetas agrupadas; PWA instalable.<br>
+      <b style="color:var(--ink)">v2.8–2.9:</b> gestión de usuarios e historial con filtro de fechas.<br>
       <b style="color:var(--ink)">v2.7:</b> CPP con rangos oficiales actualizados.<br>
       <b style="color:var(--ink)">v2.5–2.6:</b> Firebase, informes, gráficas comparativas, cronómetro pausable.<br>
       <b style="color:var(--ink)">v1.4–1.9:</b> UPS entrada/salida, acordeón, averías, revisión.
     </div></div>
   </div>`;
 }
+
+/* ================== SINCRONIZACIÓN MANUAL (v2.11) ================== */
+function doManualSync(){
+  if(!window.FirebaseSync) return;
+  const btn=$('#btnSync'); if(btn){btn.disabled=true;btn.textContent='⏳ Sincronizando…';}
+  FirebaseSync.syncNow(false).then(r=>{
+    if(r.msg) toast(r.msg,r.ok?'ok':'bad');
+    if(r.ok){
+      /* Recargar datos desde localStorage (pull pudo traer estado remoto) */
+      loadDB();
+      $('#lt').innerHTML=DB.users.filter(u=>u.role==='tech'&&u.active!==false).map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
+      if(currentTab==='set') renderSettings();
+      else if(currentTab==='myruns') renderMyRuns();
+      else if(currentTab==='dash') renderDash();
+      else if(currentTab==='hist') renderHistory();
+      else if(currentTab==='alerts') renderAlerts();
+      else if(currentTab==='users') renderUsers();
+    }
+  }).finally(()=>{ if(btn){btn.disabled=false;btn.textContent='☁️ Sincronizar ahora';} });
+}
+
 function exportDB(){
   const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mantcap_respaldo.json';a.click();
@@ -2026,10 +2057,27 @@ function confirmFinish(){
   updateBadges();showTab('myruns');
 }
 
-/* ================== TÉCNICO · MIS RECORRIDOS ================== */
+/* ================== TÉCNICO · MIS RECORRIDOS (v2.11: estado + sync manual) ================== */
 function renderMyRuns(){
   const runs=DB.runs.filter(r=>r.techName===SES.name);
-  $('#content').innerHTML=`<div class="card"><div class="hd"><h3>Mis recorridos (${runs.length})</h3></div>
+  const fbOK=window.FirebaseSync&&FirebaseSync.isConfigured();
+  const enLinea=fbOK&&FirebaseSync.isOnline();
+  const ultimo=fbOK?FirebaseSync.lastSync():null;
+  let estNube;
+  if(!fbOK) estNube='<span style="color:var(--mut)">No configurado</span>';
+  else if(enLinea) estNube='<span style="color:var(--ok);font-weight:700">🟢 Conectado — los datos se sincronizan automáticamente</span>';
+  else estNube='<span style="color:var(--bad);font-weight:700">🔴 Sin conexión — tus datos están seguros aquí y se subirán al reconectar</span>';
+  $('#content').innerHTML=`
+  <div class="card" style="margin-bottom:14px">
+    <div class="hd"><h3>☁️ Sincronización</h3>
+      <span class="sp"><button class="btn ${enLinea?'btn-pri':'btn-gho'} btn-sm" id="btnSync" onclick="doManualSync()">☁️ Sincronizar ahora</button></span></div>
+    <div class="bd" style="font-size:13px">
+      <p style="margin-bottom:6px">Estado: ${estNube}</p>
+      ${ultimo?`<p style="color:var(--mut)">Última sincronización: <b>${fmtDT(ultimo)}</b></p>`:''}
+      <p style="color:var(--mut);font-size:12px">La app sincroniza automáticamente al guardar y al reconectar. Usa el botón para forzarla ahora.</p>
+    </div>
+  </div>
+  <div class="card"><div class="hd"><h3>Mis recorridos (${runs.length})</h3></div>
   ${runs.length?`<table class="tb"><tr><th>Fecha</th><th>Sitio</th><th>Ticket</th><th>Duración</th><th>Alertas</th><th></th></tr>
   ${runs.map(r=>`<tr>
     <td>${fmtDT(r.date)}</td><td>${locBadge(r.loc)}</td><td>${esc(r.ticket)}</td>
@@ -2054,6 +2102,13 @@ async function init(){
   $('#lt').innerHTML=DB.users.filter(u=>u.role==='tech'&&u.active!==false).map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
   const s=sessionStorage.getItem('mantcap_ses');
   if(s) openApp();
+  /* Avisar y refrescar cuando cambie la conexión */
+  window.addEventListener('online',()=>{
+    if(SES){ toast('🌐 Conexión restaurada — sincronizando…','ok'); FirebaseSync.syncNow(true); }
+  });
+  window.addEventListener('offline',()=>{
+    if(SES) toast('📴 Sin conexión — los cambios se guardan localmente','');
+  });
 }
 init();
 

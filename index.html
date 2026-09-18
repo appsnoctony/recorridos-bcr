@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>MantCAP · Gestión de Mantenimiento</title>
+<meta name="theme-color" content="#0f1c2e"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<!-- Firebase (compat builds) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-sync.js"></script>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="MantCAP">
+<style>
+:root{
+  --bg:#f2f5f9; --card:#ffffff; --ink:#16233a; --mut:#5c6b82; --line:#e3e8ef;
+  --pri:#0e5fd8; --pri2:#0a4aa8; --ok:#178f5f; --warn:#b97900; --bad:#d13c3c;
+  --side:#0f1c2e; --side2:#16283f; --rad:14px; --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px}
+h1,h2,h3{font-weight:700}
+.hidden{display:none!important}
+
+/* ---------- LOGIN ---------- */
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(1200px 600px at 80% -10%,#1b3a63 0%,var(--side) 55%);}
+.login-card{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.logo .mark{width:38px;height:38px;border-radius:10px;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
+.logo b{font-size:18px}
+.sub{color:var(--mut);font-size:12.5px;margin-bottom:18px}
+.role-tabs{display:flex;gap:8px;margin-bottom:14px}
+.role-tabs button{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-weight:600;color:var(--mut)}
+.role-tabs button.on{border-color:var(--pri);color:var(--pri);background:#eef4ff}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:5px}
+.fld input,.fld select,.fld textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;outline:none}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--pri)}
+.btn{border:none;border-radius:10px;padding:11px 16px;font-weight:600;display:inline-flex;align-items:center;gap:7px;justify-content:center}
+.btn-pri{background:var(--pri);color:#fff}.btn-pri:hover{background:var(--pri2)}
+.btn-gho{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.btn-bad{background:var(--bad);color:#fff}
+.btn-ok{background:var(--ok);color:#fff}
+.btn-sm{padding:7px 11px;font-size:12.5px;border-radius:8px}
+.demo{margin-top:14px;background:#f6f8fb;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mut);line-height:1.6}
+.err{background:#fdecec;color:var(--bad);border:1px solid #f5c2c2;border-radius:10px;padding:9px 12px;font-size:12.5px;margin-bottom:10px}
+
+/* ---------- SHELL ---------- */
+.shell{display:flex;min-height:100vh}
+.side{width:228px;background:var(--side);color:#c8d3e0;display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:30}
+.side .brand{padding:16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.side .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--pri);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;margin-right:8px}
+.side nav{flex:1;padding:10px 8px;overflow:auto}
+.nitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#c8d3e0;font-weight:500;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-size:13.5px}
+.nitem svg{width:17px;height:17px;flex:none}
+.nitem.on{background:var(--pri);color:#fff}
+.nitem:hover:not(.on){background:var(--side2)}
+.nitem .cnt{margin-left:auto;background:var(--bad);color:#fff;font-size:10.5px;font-weight:700;border-radius:99px;padding:1px 7px}
+.side .foot{padding:12px;border-top:1px solid rgba(255,255,255,.08);font-size:11.5px;color:#7f90a6}
+.side .foot .ver{color:#4da3ff;font-weight:700}
+.main{flex:1;margin-left:228px;display:flex;flex-direction:column;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid var(--line);padding:12px 22px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
+.topbar h1{font-size:16.5px}
+.topbar .who{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mut)}
+.avatar{width:32px;height:32px;border-radius:99px;background:#eef4ff;color:var(--pri);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.content{padding:20px 22px 40px;max-width:1400px;width:100%}
+.mobnav{display:none}
+@media(max-width:860px){
+  .side{display:none}
+  .main{margin-left:0}
+  .mobnav{display:flex;gap:6px;overflow-x:auto;background:var(--side);padding:8px;position:sticky;top:0;z-index:25}
+  .mobnav .nitem{white-space:nowrap;padding:8px 12px}
+  .content{padding:14px 12px 60px}
+  .topbar{padding:10px 12px}
+}
+
+/* ---------- COMPONENTES ---------- */
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.g4,.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);box-shadow:var(--shadow)}
+.card .hd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card .hd h3{font-size:14px}
+.card .hd .sp{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card .bd{padding:16px}
+.kpi{padding:16px}
+.kpi .v{font-size:26px;font-weight:800;letter-spacing:-.5px}
+.kpi .l{font-size:12px;color:var(--mut);margin-top:3px;font-weight:500}
+table.tb{width:100%;border-collapse:collapse;font-size:13px}
+.tb th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tb td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tb tr:last-child td{border-bottom:none}
+.tb tr:hover td{background:#f8fafc}
+.pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.pill.ok{background:#e4f5ec;color:var(--ok)} .pill.bad{background:#fdecec;color:var(--bad)} .pill.pen{background:#fff4dc;color:var(--warn)} .pill.mut{background:#eef1f5;color:var(--mut)}
+.pill.cap{background:#eaf1ff;color:var(--pri)} .pill.cpp{background:#f0e9ff;color:#6d3fd4}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar input,.toolbar select{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;outline:none}
+.chip{padding:7px 13px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-weight:600;font-size:12.5px;color:var(--mut)}
+.chip.on{border-color:var(--pri);color:var(--pri);background:#eef4ff}
+.empty{padding:34px;text-align:center;color:var(--mut);font-size:13px}
+.chart-wrap{position:relative;height:320px}
+
+/* ---------- SELECCIÓN DE MÉTRICAS (tarjetas por grupo) ---------- */
+.mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+@media(max-width:700px){.mgrid{grid-template-columns:1fr}}
+.mgroup{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.mg-hd{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f8fafc;border-bottom:1px solid var(--line);font-size:12.5px}
+.mg-hd b{flex:1}
+.mg-hd .cnt{font-size:11px;color:var(--mut);font-weight:600}
+.mg-body{display:flex;flex-wrap:wrap;gap:2px;padding:5px 8px}
+.mchk{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;user-select:none}
+.mchk:hover{background:#f2f6fb}
+.mchk.on{background:#eef4ff;color:var(--pri);font-weight:700}
+.mchk input{accent-color:var(--pri);width:15px;height:15px;cursor:pointer}
+
+/* ---------- CRONÓMETRO ---------- */
+.timerchip{display:inline-flex;align-items:center;gap:7px;background:#0f5c3f;color:#fff;border-radius:99px;padding:7px 14px;font-weight:700;font-size:13.5px;font-variant-numeric:tabular-nums}
+.timerchip i{width:9px;height:9px;border-radius:99px;background:#7dffc0;animation:pu 1.4s infinite}
+.timerchip.paused{background:#5c6b82}
+.timerchip.paused i{background:#dfe6ee;animation:none}
+.ticketchip{display:inline-flex;align-items:center;gap:6px;background:#eef4ff;color:var(--pri);border-radius:99px;padding:7px 14px;font-weight:700;font-size:13px}
+
+/* ---------- FORM TÉCNICO ---------- */
+.tform-head{position:sticky;top:0;z-index:15;background:rgba(242,245,249,.92);backdrop-filter:blur(6px);padding:10px 0;margin-bottom:6px}
+.prog{height:8px;background:#e3e8ef;border-radius:99px;overflow:hidden;margin-top:8px}
+.prog i{display:block;height:100%;background:var(--pri);border-radius:99px;transition:width .25s}
+.sec{margin-bottom:14px;border:1px solid var(--line);border-radius:var(--rad);background:#fff;box-shadow:var(--shadow);overflow:hidden}
+.sec>.st{padding:12px 16px;background:#f8fafc;border-bottom:1px solid var(--line);font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:8px}
+.sec>.st .n{background:var(--pri);color:#fff;width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;flex:none}
+
+/* ---------- ACORDEÓN DE EQUIPOS ---------- */
+.sec>.st.sec-hd{cursor:pointer;user-select:none;-webkit-user-select:none}
+.sec>.st.sec-hd:hover{background:#eef2f7}
+.chev{display:inline-flex;align-items:center;justify-content:center;width:18px;font-size:11px;color:var(--mut);transition:transform .18s;flex:none}
+.chev.open{transform:rotate(90deg)}
+.sec-body.collapsed{display:none}
+.sec-hd .title{flex:1;text-align:left;min-width:0}
+.sec-hd .pills{display:flex;gap:6px;align-items:center;flex:none}
+
+.q{padding:13px 16px;border-bottom:1px solid var(--line)}
+.q:last-child{border-bottom:none}
+.q .qt{font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.q .qt .req{color:var(--bad)}
+.q .meta{font-size:11.5px;color:var(--mut);font-weight:500}
+.in-num{display:flex;align-items:center;gap:8px;max-width:280px}
+.in-num input{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;outline:none}
+.in-num input:focus{border-color:var(--pri)}
+.in-num .u{color:var(--mut);font-weight:600;font-size:13px;min-width:26px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{border:1.5px solid var(--line);border-radius:10px;padding:9px 14px;background:#fff;font-weight:500;cursor:pointer;user-select:none;font-size:13.5px}
+.opt.on{border-color:var(--pri);background:#eef4ff;color:var(--pri);font-weight:700}
+.oor{margin-top:10px;background:#fdecec;border:1px solid #f3b8b8;border-left:4px solid var(--bad);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.oor b{color:var(--bad);display:flex;align-items:center;gap:6px;font-size:12.5px;letter-spacing:.2px}
+.oor .exp{color:#8a3232;margin:4px 0 8px}
+.oor label{display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;font-size:12.5px}
+.oor textarea{width:100%;border:1px solid #f3b8b8;border-radius:8px;padding:7px 9px;font-size:12.5px;resize:vertical}
+.okband{margin-top:10px;background:#e4f5ec;border:1px solid #bfe6d2;border-left:4px solid var(--ok);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--ok);font-weight:600}
+.sticky-finish{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:40;display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);box-shadow:0 8px 30px rgba(16,24,40,.18);border-radius:99px;padding:8px 10px 8px 18px;font-size:13px}
+@media(max-width:560px){.sticky-finish{left:12px;right:12px;transform:none;justify-content:space-between}}
+
+/* ---------- MODAL / TOAST ---------- */
+.mask{position:fixed;inset:0;background:rgba(10,18,30,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:640px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modal.wide{max-width:900px}
+.modal .mh{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.modal .mh h3{font-size:15px}
+.modal .mh .x{margin-left:auto;border:none;background:none;font-size:20px;color:var(--mut);line-height:1}
+.modal .mb{padding:16px 18px;overflow:auto}
+.modal .mf{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+#toasts{position:fixed;top:14px;right:14px;z-index:99;display:flex;flex-direction:column;gap:8px}
+.toast{background:#101c30;color:#fff;border-radius:10px;padding:11px 15px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.3);animation:tin .25s;display:flex;gap:8px;align-items:center;max-width:340px}
+.toast.ok{background:#0f5c3f}.toast.bad{background:#8f2424}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login">
+  <div class="login-card">
+    <div class="logo"><span class="mark">M</span><b>MantCAP</b></div>
+    <div class="sub">Gestión de mantenimiento CAP · CPP · Recorridos, mediciones y alertas</div>
+    <div id="lerr" class="err hidden"></div>
+    <div class="role-tabs">
+      <button id="rtAdm" class="on" onclick="setRole('admin')">Administrador</button>
+      <button id="rtTec" onclick="setRole('tech')">Técnico</button>
+    </div>
+    <div id="fAdmin">
+      <div class="fld"><label>Usuario</label><input id="lu" value="admin" autocomplete="off"></div>
+      <div class="fld"><label>Contraseña</label><input id="lp" type="password" value="admin123"></div>
+      <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
+    </div>
+    <div id="fTech" class="hidden">
+      <div class="fld"><label>Técnico</label><select id="lt"></select></div>
+      <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
+      <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
+    </div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.10.1 PWA</b></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <div class="shell">
+    <aside class="side" id="sideNav"></aside>
+    <div class="main">
+      <div class="mobnav" id="mobNav"></div>
+      <div class="topbar">
+        <h1 id="pageTitle">Resumen</h1>
+        <div class="who"><span id="whoName"></span><span class="avatar" id="whoAva"></span>
+          <button class="btn btn-gho btn-sm" onclick="logout()">Salir</button></div>
+      </div>
+      <div class="content" id="content"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modalHost"></div>
+<div id="toasts"></div>
+
+<script>
+/* ================================================================
+   MantCAP · PWA de gestión de mantenimiento
+   v2.10.1 — PWA: manifest + service worker + iconos integrados.
+   v2.10 — Eliminado "Fijar en Resumen"; métricas en tarjetas
+           agrupadas por tipo con casillas.
+   v2.9 — Historial con filtro de fechas
+   v2.8 — Gestión de usuarios técnicos
+   v2.7 — CPP con rangos oficiales actualizados
+   v2.5–2.6 — Firebase, informes, gráficas comparativas
+   v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
+   ================================================================ */
+const APP_VERSION='v2.10.1';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
+const fmtD=iso=>{const d=new Date(iso);return d.toLocaleDateString('es-CR',{day:'2-digit',month:'2-digit',year:'numeric'})};
+const fmtDT=iso=>{const d=new Date(iso);return fmtD(iso)+' '+d.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'})};
+function fmtDur(sec){
+  if(sec==null||isNaN(sec)) return '—';
+  sec=Math.max(0,Math.round(sec));
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+  const p=n=>String(n).padStart(2,'0');
+  return (h?h+'h ':'')+p(m)+'m '+p(s)+'s';
+}
+const KEY='mantcap_db_v3', DKEY='mantcap_draft_v3';
+let DB=null, SES=null, currentTab='dash', role='admin', charts=new Map();
+let locFilter='ALL';
+let timerInt=null;
+function clearTimer(){if(timerInt){clearInterval(timerInt);timerInt=null;}}
+
+window.addEventListener('error',ev=>{try{toast('⚠ '+ev.message,'bad')}catch(_){}});
+
+/* ---------- Iconos ---------- */
+const IC={
+ dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+ chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
+ list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>',
+ hist:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
+ alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v4"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/></svg>',
+ gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 00-2-1.2L14 3h-4l-.5 2.7a7 7 0 00-2 1.2l-2.4-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 002 1.2L10 21h4l.5-2.7a7 7 0 002-1.2l2.4 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>',
+ form:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>'
+};
+const CHART_COLORS=['#0e5fd8','#d13c3c','#178f5f','#b97900','#6d3fd4','#0e9bb5','#c2477e','#5c6b82','#3a7d2c','#a3541b','#2f4b7c','#9966cc'];
+
+/* ================== PREGUNTAS SEMILLA · CAP ================== */
+const DEF_CAP=[
+['Telecomunicaciones','Generador Telecomunicaciones. Nivel de combustible','number','%',60,100],
+['Transferencia','Transferencia. Estado','select','',null,null,{opts:[['Automático',1],['Manual o apagado',0]]}],
+['Transformador','Transformador Principal del CAP presenta','multi','',null,null,{opts:[['Temperatura normal',1],['Ruido normal',1],['Alta temperatura',0],['Ruido anormal',0]]}],
+['Generador A','Generador A. Estado','select','',null,null,{opts:[['Automático',1],['Manual o apagado',0]]}],
+['Generador A','Generador A. Interruptor de salida principal','select','',null,null,{opts:[['ON',1],['OFF',0]]}],
+['Generador A','Generador A. Temperatura','number','°C',35,50],
+['Generador A','Generador A. Voltaje batería','number','V',24,28],
+['Generador A','Generador A. Nivel de combustible','number','%',60,100],
+['Generador A','Generador A. Horímetro','number','h',null,null,{hm:'A'}],
+['Generador B','Generador B. Estado','select','',null,null,{opts:[['Automático',1],['Manual o apagado',0]]}],
+['Generador B','Generador B. Interruptor de salida principal','select','',null,null,{opts:[['ON',1],['OFF',0]]}],
+['Generador B','Generador B. Temperatura','number','°C',35,50],
+['Generador B','Generador B. Voltaje batería','number','V',25,26],
+['Generador B','Generador B. Nivel de combustible','number','%',60,100],
+['Generador B','Generador B. Horímetro','number','h',null,null,{hm:'B'}],
+['Subestación','Medidor Principal. Corriente Fase A','number','A',null,null],
+['Subestación','Medidor Principal. Corriente Fase B','number','A',null,null],
+['Subestación','Medidor Principal. Corriente Fase C','number','A',null,null],
+['Subestación','Medidor brazo A. Corriente Fase A','number','A',null,null],
+['Subestación','Medidor brazo A. Corriente Fase B','number','A',null,null],
+['Subestación','Medidor brazo A. Corriente Fase C','number','A',null,null],
+['Subestación','Medidor brazo B. Corriente Fase A','number','A',null,null],
+['Subestación','Medidor brazo B. Corriente Fase B','number','A',null,null],
+['Subestación','Medidor brazo B. Corriente Fase C','number','A',null,null],
+['Subestación','Estado subestación','select','',null,null,{opts:[['Operación normal',1],['Alarmada',0]]}],
+['UPS A','UPS A. Corriente de entrada Fase A','number','A',null,null],
+['UPS A','UPS A. Corriente de entrada Fase B','number','A',null,null],
+['UPS A','UPS A. Corriente de entrada Fase C','number','A',null,null],
+['UPS A','UPS A. Corriente de salida Fase A','number','A',null,null],
+['UPS A','UPS A. Corriente de salida Fase B','number','A',null,null],
+['UPS A','UPS A. Corriente de salida Fase C','number','A',null,null],
+['UPS A','UPS A. Potencia real Fase A','number','kW',null,null],
+['UPS A','UPS A. Potencia real Fase B','number','kW',null,null],
+['UPS A','UPS A. Potencia real Fase C','number','kW',null,null],
+['UPS A','UPS A. Potencia real Total','number','kW',null,null],
+['UPS A','UPS A. Tiempo de respaldo de baterías','number','min',null,null],
+['UPS A','UPS A. Temperatura de gabinete de baterías','number','°C',20,23],
+['UPS B','UPS B. Corriente de entrada Fase A','number','A',null,null],
+['UPS B','UPS B. Corriente de entrada Fase B','number','A',null,null],
+['UPS B','UPS B. Corriente de entrada Fase C','number','A',null,null],
+['UPS B','UPS B. Corriente de salida Fase A','number','A',null,null],
+['UPS B','UPS B. Corriente de salida Fase B','number','A',null,null],
+['UPS B','UPS B. Corriente de salida Fase C','number','A',null,null],
+['UPS B','UPS B. Potencia real Fase A','number','kW',null,null],
+['UPS B','UPS B. Potencia real Fase B','number','kW',null,null],
+['UPS B','UPS B. Potencia real Fase C','number','kW',null,null],
+['UPS B','UPS B. Potencia real Total','number','kW',null,null],
+['UPS B','UPS B. Tiempo de respaldo de baterías','number','min',null,null],
+['UPS B','UPS B. Temperatura de gabinete de baterías','number','°C',20,23],
+['T-UPS','T-UPS A. Corriente Fase A','number','A',null,null],
+['T-UPS','T-UPS A. Corriente Fase B','number','A',null,null],
+['T-UPS','T-UPS A. Corriente Fase C','number','A',null,null],
+['T-UPS','T-UPS B. Corriente Fase A','number','A',null,null],
+['T-UPS','T-UPS B. Corriente Fase B','number','A',null,null],
+['T-UPS','T-UPS B. Corriente Fase C','number','A',null,null],
+['Mini Mate','Unidad Mini Mate A. Estado','select','',null,null,{opts:[['Normal',1],['Shutdown',0]]}],
+['Mini Mate','Unidad Mini Mate A. Temperatura','number','°C',18,27],
+['Mini Mate','Unidad Mini Mate A. Humedad','number','%',40,60],
+['Mini Mate','Unidad Mini Mate B. Estado','select','',null,null,{opts:[['Normal',1],['Shutdown',0]]}],
+['Mini Mate','Unidad Mini Mate B. Temperatura','number','°C',18,27],
+['Mini Mate','Unidad Mini Mate B. Humedad','number','%',40,60],
+['Seguridad e Instalaciones','Las condensadoras se encuentran en buen estado y sin fugas','boolean','',null,null,{normal:'Sí'}],
+['Seguridad e Instalaciones','El panel del sistema contra incendio se encuentra sin alarmas','boolean','',null,null,{normal:'Sí'}],
+['Seguridad e Instalaciones','Presión adecuada de tanques de agente supresor de incendio (manómetro del tanque)','boolean','',null,null,{normal:'Sí'}],
+['Seguridad e Instalaciones','Las luces del entrepiso y del techo se encuentran en buen estado','boolean','',null,null,{normal:'Sí'}],
+['Seguridad e Instalaciones','Sala de cuarentena se encuentra ordenada','boolean','',null,null,{normal:'Sí'}],
+['Seguridad e Instalaciones','Equipos electromecánicos (UPS, regletas, tableros, A/C) de sala de cuarentena en buen estado','boolean','',null,null,{normal:'Sí'}],
+['Seguridad e Instalaciones','Alarma contra robo tiene notificaciones','boolean','',null,null,{normal:'Sí'}],
+['Seguridad e Instalaciones','Racks con candado cerrado correctamente (si alguno está abierto, indicarlo)','select','',null,null,{opts:[['Revisado',1],['Con novedad',0]]}],
+['Ambiental','PASILLO AJ. Temperatura','number','°C',18,27],
+['Ambiental','PASILLO AJ. Humedad relativa','number','%',40,60],
+['Ambiental','PASILLO AF-AD. Temperatura','number','°C',18,27],
+['Ambiental','PASILLO AF-AD. Humedad relativa','number','%',40,60],
+['Ambiental','POD. Temperatura','number','°C',18,27],
+['Ambiental','POD. Humedad relativa','number','%',40,60],
+['Ambiental','PASILLO AG-AI. Temperatura','number','°C',18,27],
+['Ambiental','PASILLO AG-AI. Humedad relativa','number','%',40,60],
+['Ambiental','PASILLO AC. Temperatura','number','°C',18,27],
+['Ambiental','PASILLO AC. Humedad relativa','number','%',40,60],
+['Cierre','Paneles de Fibra Óptica con tapones en todas las salidas vacías','boolean','',null,null,{normal:'Sí'}],
+['Cierre','Orden y limpieza del CAP','text','',null,null,{ph:'Ej: Todo limpio y en orden'}],
+['Cierre','PUE CAP (ver https://172.21.73.0/web/)','number','',1.2,1.6],
+['Cierre','Resumen del estado de la infraestructura del CAP','text','',null,null,{ph:'Observaciones generales del recorrido'}]
+];
+
+/* ================== PREGUNTAS SEMILLA · CPP (rangos oficiales) ================== */
+const DEF_CPP=[
+['Transformadores','Transformador A TCPECSETR101 presenta','multi','',null,null,{opts:[['Temperatura Normal',1],['Ruido Normal',1],['Otras',0]]}],
+['Transformadores','Transformador B TCPECSETR102 presenta','multi','',null,null,{opts:[['Temperatura Normal',1],['Ruido Normal',1],['Otras',0]]}],
+['Interruptores','Encierro de Interruptores Principales TCPECSETG101 y TCPECSETG102','select','',null,null,{opts:[['Con Candado',1],['Otras',0]]}],
+['Generador CAT 1','Generador CAT 1 TCPECSEGE101. Nivel de combustible','select','',null,null,{opts:[['25%',0,1],['50%',0,4],['75%',1,15],['100%',1,80]]}],
+['Generador CAT 1','Generador CAT 1 TCPECSEGE101. Voltaje batería (26 +/- 1V)','number','V',25,27],
+['Generador CAT 1','Generador CAT 1 TCPECSEGE101. Horímetro','number','h',null,null,{hm:'CAT1'}],
+['Generador CAT 1','Generador CAT 1 TCPECSEGE101. Temperatura (110 +/- 15°F)','number','°F',95,125],
+['Generador CAT 1','Generador CAT 1 TCPECSEGE101. Estado','select','',null,null,{opts:[['Automático',1,75],['ON',1,18],['OFF',0,4],['Alarmado',0,1],['Otras',0,2]]}],
+['Generador CAT 1','Generador CAT 1 TCPECSEGE101. Interruptor principal de salida','select','',null,null,{opts:[['ON',1,96],['OFF',0,4]]}],
+['Generador CAT 2','Generador CAT 2 TCPECSEGE102. Nivel de combustible','select','',null,null,{opts:[['25%',0,1],['50%',0,4],['75%',1,15],['100%',1,80]]}],
+['Generador CAT 2','Generador CAT 2 TCPECSEGE102. Voltaje batería (25 +/- 1V)','number','V',24,26],
+['Generador CAT 2','Generador CAT 2 TCPECSEGE102. Horímetro','number','h',null,null,{hm:'CAT2'}],
+['Generador CAT 2','Generador CAT 2 TCPECSEGE102. Temperatura (110 +/- 15°F)','number','°F',95,125],
+['Generador CAT 2','Generador CAT 2 TCPECSEGE102. Estado','select','',null,null,{opts:[['Automático',1,75],['ON',1,18],['OFF',0,4],['Alarmado',0,1],['Otras',0,2]]}],
+['Generador CAT 2','Generador CAT 2 TCPECSEGE102. Interruptor principal de salida','select','',null,null,{opts:[['ON',1,96],['OFF',0,4]]}],
+['Generador Modasa','Generador Modasa TAR0684GE101 130kW. Estado','select','',null,null,{opts:[['Automático',1,75],['ON',1,18],['OFF',0,4],['Alarmado',0,3]]}],
+['Generador Modasa','Generador Modasa TAR0684GE101. Temperatura (95 +/- 10°F)','number','°F',85,105],
+['Generador Modasa','Generador Modasa TAR0684GE101. Voltaje de batería (13 +/- 1V)','number','V',12,14],
+['Generador Modasa','Generador Modasa TAR0684GE101. Horímetro','number','h',null,null,{hm:'MOD'}],
+['Generador Modasa','Generador Modasa TAR0684GE101. Combustible % (debe ser superior al 50%)','number','%',50,null],
+['Salas de Cuarentena','Salas de Cuarentena','multi','',null,null,{opts:[['Aire Acondicionado de acuerdo a parámetros',1],['Área limpio',1],['Control de acceso en buen estado',1],['Cerradura en buen estado',1],['Control del Aire acondicionado funcionando',1]]}],
+['Incendio','Panel de Incendio del Sótano','multi','',null,null,{opts:[['Sin Alertas',1],['Sin Alarmas',1],['Sin supervisores',1]]}],
+['Transformadores','Transformador principal','multi','',null,null,{opts:[['Temperatura normal',1],['Ruido normal',1],['Otras',0]]}],
+['Subestación','Subestación Sótano TAR0684SU101. Carga total Fase 1 (A) Máximo 200A','number','A',null,200],
+['Subestación','Subestación Sótano TAR0684SU101. Carga total Fase 2 (A) Máximo 200A','number','A',null,200],
+['Subestación','Subestación Sótano TAR0684SU101. Carga total Fase 3 (A) Máximo 200A','number','A',null,200],
+['Subestación','Subestación TAR0684SU101. Estado del Supresor Principal','select','',null,null,{opts:[['Conectado y sin fallo',1,97],['Conectado y con fallo',0,2],['Desconectado',0,1]]}],
+['Subestación','Subestación Sótano TAR0684SU101. Estado general','multi','',null,null,{opts:[['Condición normal',1],['Ruido normal',1],['Otras',0]]}],
+['Subestación','Subestación. Estado del panel de control','select','',null,null,{opts:[['Automática',1,90],['Apagada',0,3],['Manual',0,5],['Modo de Prueba',0,1],['Otras',0,1]]}],
+['Subestación','Subestación. Verificar estado de UPS auxiliar','select','',null,null,{opts:[['Normal',1],['Alarmada',0]]}],
+['Subestación','Unidad de Gas 1 Subestación Sótano. Temperatura (debe estar entre 20 y 23°C)','number','°C',20,23],
+['Subestación','Unidad de Gas 2 Subestación Sótano. Temperatura (debe estar entre 20 y 23°C)','number','°C',20,23],
+['Agua','Sistema de bombeo de agua potable','multi','',null,null,{opts:[['Funcionamiento Normal',1],['Presión manométrica entre 40 y 60 psi',1],['Otras',0]]}],
+['Agua','Sistema de bombeo de sistema de incendio','multi','',null,null,{opts:[['Panel eléctrico encendido',1],['Presión manométrica entre 80 y 100 psi',1],['Otras',0]]}],
+['Climatización','Unidad Cassette Comunicaciones 1 TCPECSEEV101. Temperatura (debe ser 21°C)','number','°C',20,23],
+['Climatización','Unidad Cassette Comunicaciones 2 TCPECSEEV102. Temperatura (debe ser 21°C)','number','°C',20,23],
+['Climatización','Unidad de Aire Acondicionado 1 Subestación Primer Piso. Temperatura (debe ser 21°C)','number','°C',20,23],
+['Climatización','Unidad de Aire Acondicionado 2 Subestación Primer Piso. Temperatura (debe ser 21°C)','number','°C',20,23],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de entrada Fase A','number','A',null,null],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de entrada Fase B','number','A',null,null],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de entrada Fase C','number','A',null,null],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de salida Fase A (Máximo 84A)','number','A',null,84],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de salida Fase B (Máximo 84A)','number','A',null,84],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de salida Fase C (Máximo 84A)','number','A',null,84],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Potencia real Fase A (Máximo 23kW)','number','kW',null,23],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Potencia real Fase B (Máximo 23kW)','number','kW',null,23],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Potencia real Fase C (Máximo 23kW)','number','kW',null,23],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Potencia real Total (máx. consumo 75kW)','number','kW',null,75],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Tiempo en minutos de respaldo de baterías','number','min',null,null],
+['UPS Brazo A','UPS Brazo A TCPECSEUP101. Temperatura de gabinete de baterías (entre 18-21°C)','number','°C',18,21],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de entrada Fase A','number','A',null,null],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de entrada Fase B','number','A',null,null],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de entrada Fase C','number','A',null,null],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de salida Fase A (Máximo 94A)','number','A',null,94],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de salida Fase B (Máximo 94A)','number','A',null,94],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de salida Fase C (Máximo 94A)','number','A',null,94],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Potencia real Fase A (Máxima 26kW)','number','kW',null,26],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Potencia real Fase B (Máxima 26kW)','number','kW',null,26],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Potencia real Fase C (Máxima 26kW)','number','kW',null,26],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Potencia real Total (máx. consumo 75kW)','number','kW',null,75],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Tiempo en minutos de respaldo de baterías','number','min',null,null],
+['UPS Brazo B','UPS Brazo B TCPECSEUP102. Temperatura de gabinete de baterías (entre 18-21°C)','number','°C',18,21],
+['Subestación','Subestación Ramal A TCPECSEME101. Carga total Fase 1 (A) Máximo 250A','number','A',null,250],
+['Subestación','Subestación Ramal A TCPECSEME101. Carga total Fase 2 (A) Máximo 250A','number','A',null,250],
+['Subestación','Subestación Ramal A TCPECSEME101. Carga total Fase 3 (A) Máximo 250A','number','A',null,250],
+['Subestación','Subestación Ramal B TCPECSEME102. Carga total Fase 1 (A) Debe ser CERO','number','A',0,0],
+['Subestación','Subestación Ramal B TCPECSEME102. Carga total Fase 2 (A) Debe ser CERO','number','A',0,0],
+['Subestación','Subestación Ramal B TCPECSEME102. Carga total Fase 3 (A) Debe ser CERO','number','A',0,0],
+['Cierre','PUE del CPP','number','',1.2,1.6],
+['PDU Ramal A','PDU Ramal A TCPECSEPD101. Carga Fase 1 (A) Máximo 190A','number','A',null,190],
+['PDU Ramal A','PDU Ramal A TCPECSEPD101. Carga Fase 2 (A) Máximo 190A','number','A',null,190],
+['PDU Ramal A','PDU Ramal A TCPECSEPD101. Carga Fase 3 (A) Máximo 190A','number','A',null,190],
+['PDU Ramal A','PDU Ramal A TCPECSEPD101. Potencia total (máx. 75KW)','number','kW',null,75],
+['PDU Ramal B','PDU Ramal B TCPECSEPD102. Carga Fase 1 (A) Máximo 210A','number','A',null,210],
+['PDU Ramal B','PDU Ramal B TCPECSEPD102. Carga Fase 2 (A) Máximo 210A','number','A',null,210],
+['PDU Ramal B','PDU Ramal B TCPECSEPD102. Carga Fase 3 (A) Máximo 210A','number','A',null,210],
+['PDU Ramal B','PDU Ramal B TCPECSEPD102. Potencia total (máx. 75KW)','number','kW',null,75],
+['Sala Principal','Revisar que los rack tengan el candado cerrado correctamente (si alguno está abierto, indicarlo)','select','',null,null,{opts:[['Revisado',1,96],['Con novedad',0,4]]}],
+['Sala Principal','Unidades Vertiv Inrow Sala Principal. Temperatura promedio de suministro (entre 16 y 20°C)','number','°C',16,20],
+['Sala Principal','Unidades Vertiv Inrow Sala Principal. Temperatura mínima de suministro (mín. 15°C)','number','°C',15,null],
+['Sala Principal','Unidades Vertiv Inrow Sala Principal. Temperatura máxima de suministro (máx. 22°C)','number','°C',null,22],
+['Sala Principal','Unidades Vertiv Inrow Sala Principal. Humedad Relativa de Retorno Inrow 06 TCPECSEIR106 (máx. 50%)','number','%',null,50],
+['Sala Anexa','Unidades Vertiv Inrow Sala Anexa. Temperatura promedio de suministro (entre 16 y 20°C)','number','°C',16,20],
+['Sala Anexa','Unidades Vertiv Inrow Sala Anexa. Temperatura mínima de suministro (mín. 15°C)','number','°C',15,null],
+['Sala Anexa','Unidades Vertiv Inrow Sala Anexa. Temperatura máxima de suministro (máx. 22°C)','number','°C',null,22],
+['Sala Anexa','Unidades Vertiv Inrow Sala Anexa. Humedad Relativa de Retorno Inrow 12 TCPECSEIR112 (máx. 50%)','number','%',null,50],
+['Cierre','Verificar que los patch panel y gabinete GF01 tengan todos los tapones instalados','boolean','',null,null,{normal:'Sí'}],
+['Cierre','Orden, iluminación y limpieza del CPP','multi','',null,null,{opts:[['Orden y limpieza de todos los equipos',1],['Iluminación en buen estado',1],['No revisado',0],['Otras',0]]}],
+['Cierre','Sujeción del Ducto de barra en CPP y Sala Anexa','select','',null,null,{opts:[['Visualización de todos los soportes',1],['Con novedad',0]]}],
+['Incendio','Panel de Supresión de Incendio Tercer piso','multi','',null,null,{opts:[['Sin Alertas',1],['Sin Alarmas',1],['Sin supervisores',1]]}],
+['Incendio','Tanque de Ecaro 25 de CPP, Cintoteca y Sala Anexa. Verificar que todos','multi','',null,null,{opts:[['Manómetros en Verde',1],['Actuadores instalados',1],['Otras',0]]}],
+['Agua','Tanque de Reposición de Agua','multi','',null,null,{opts:[['Nivel correcto de agua',1],['Presión mínima de 40 psi (manómetro 1)',1],['Presión mínima de 40 psi (manómetro 2)',1]]}],
+['Agua','Presión de alimentación de sistema de agua helada (mín. 40 psi)','multi','',null,null,{opts:[['Manómetro 1 verificado',1],['Manómetro 2 verificado',1],['Otras',0]]}],
+['Chillers','Presión (PSI) de retorno Chiller 1 TCPECSECH101 (28 +/- 5 PSI)','number','PSI',23,33],
+['Chillers','Temperatura de retorno Chiller 1 TCPECSECH101 (17.5 +/- 2°C operando · 22 +/- 2°C standby)','number','°C',15.5,24],
+['Chillers','Temperatura de suministro Chiller 1 TCPECSECH101 (12.5 +/- 2°C operando · 22 +/- 2°C standby)','number','°C',10.5,24],
+['Chillers','Presión (PSI) de retorno Chiller 2 TCPECSECH102 (28 +/- 5 PSI)','number','PSI',23,33],
+['Chillers','Temperatura de retorno Chiller 2 TCPECSECH102 (17.5 +/- 2°C operando · 22 +/- 2°C standby)','number','°C',15.5,24],
+['Chillers','Temperatura de suministro Chiller 2 TCPECSECH102 (12.5 +/- 2°C operando · 22 +/- 2°C standby)','number','°C',10.5,24],
+['Chillers','Presión (PSI) de retorno Chiller 3 TCPECSECH103 (28 +/- 5 PSI)','number','PSI',23,33],
+['Chillers','Temperatura de retorno Chiller 3 TCPECSECH103 (17.5 +/- 2°C operando · 22 +/- 2°C standby)','number','°C',15.5,24],
+['Chillers','Temperatura de suministro Chiller 3 TCPECSECH103 (12.5 +/- 2°C operando · 22 +/- 2°C standby)','number','°C',10.5,24],
+['Cierre','Resumen del estado de la infraestructura del CPP (indicar si hay parámetros fuera de rango y si fueron reportados)','text','',null,null,{ph:'Observaciones generales del recorrido'}]
+];
+
+/* Técnicos demo iniciales (solo la primera vez) */
+const TECH_NAMES=['Randall Moya','Javier Umaña','Diego Solano','Juan Carlos Obando','Luis Diego Brenes Loaiza','Allan Soto Gutierrez','Johel Antonio Sandoval Camacho','Mabel Zúñiga','Técnico Externo'];
+
+/* Genera nombre de usuario a partir del nombre completo */
+function userFromName(name){
+  return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/g,'').slice(0,14);
+}
+
+/* ============ MIGRACIÓN v1.4 · UPS entrada/salida ============ */
+const UPS_IO_DEFS=[
+ ['CAP',['UPS A','UPS A. Corriente de entrada Fase A','number','A',null,null]],
+ ['CAP',['UPS A','UPS A. Corriente de entrada Fase B','number','A',null,null]],
+ ['CAP',['UPS A','UPS A. Corriente de entrada Fase C','number','A',null,null]],
+ ['CAP',['UPS A','UPS A. Corriente de salida Fase A','number','A',null,null]],
+ ['CAP',['UPS A','UPS A. Corriente de salida Fase B','number','A',null,null]],
+ ['CAP',['UPS A','UPS A. Corriente de salida Fase C','number','A',null,null]],
+ ['CAP',['UPS B','UPS B. Corriente de entrada Fase A','number','A',null,null]],
+ ['CAP',['UPS B','UPS B. Corriente de entrada Fase B','number','A',null,null]],
+ ['CAP',['UPS B','UPS B. Corriente de entrada Fase C','number','A',null,null]],
+ ['CAP',['UPS B','UPS B. Corriente de salida Fase A','number','A',null,null]],
+ ['CAP',['UPS B','UPS B. Corriente de salida Fase B','number','A',null,null]],
+ ['CAP',['UPS B','UPS B. Corriente de salida Fase C','number','A',null,null]],
+ ['CPP',['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de entrada Fase A','number','A',null,null]],
+ ['CPP',['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de entrada Fase B','number','A',null,null]],
+ ['CPP',['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de entrada Fase C','number','A',null,null]],
+ ['CPP',['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de salida Fase A','number','A',null,null]],
+ ['CPP',['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de salida Fase B','number','A',null,null]],
+ ['CPP',['UPS Brazo A','UPS Brazo A TCPECSEUP101. Corriente de salida Fase C','number','A',null,null]],
+ ['CPP',['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de entrada Fase A','number','A',null,null]],
+ ['CPP',['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de entrada Fase B','number','A',null,null]],
+ ['CPP',['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de entrada Fase C','number','A',null,null]],
+ ['CPP',['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de salida Fase A','number','A',null,null]],
+ ['CPP',['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de salida Fase B','number','A',null,null]],
+ ['CPP',['UPS Brazo B','UPS Brazo B TCPECSEUP102. Corriente de salida Fase C','number','A',null,null]]
+];
+const UPS_RENAMES={
+ 'UPS A. Corriente Fase A':'UPS A. Corriente de salida Fase A',
+ 'UPS A. Corriente Fase B':'UPS A. Corriente de salida Fase B',
+ 'UPS A. Corriente Fase C':'UPS A. Corriente de salida Fase C',
+ 'UPS B. Corriente Fase A':'UPS B. Corriente de salida Fase A',
+ 'UPS B. Corriente Fase B':'UPS B. Corriente de salida Fase B',
+ 'UPS B. Corriente Fase C':'UPS B. Corriente de salida Fase C',
+ 'UPS Brazo A TCPECSEUP101. Corriente Fase A':'UPS Brazo A TCPECSEUP101. Corriente de salida Fase A',
+ 'UPS Brazo A TCPECSEUP101. Corriente Fase B':'UPS Brazo A TCPECSEUP101. Corriente de salida Fase B',
+ 'UPS Brazo A TCPECSEUP101. Corriente Fase C':'UPS Brazo A TCPECSEUP101. Corriente de salida Fase C',
+ 'UPS Brazo B TCPECSEUP102. Corriente Fase A':'UPS Brazo B TCPECSEUP102. Corriente de salida Fase A',
+ 'UPS Brazo B TCPECSEUP102. Corriente Fase B':'UPS Brazo B TCPECSEUP102. Corriente de salida Fase B',
+ 'UPS Brazo B TCPECSEUP102. Corriente Fase C':'UPS Brazo B TCPECSEUP102. Corriente de salida Fase C'
+};
+function migrateUPSIO(){
+  if(!DB.qseq) DB.qseq=DB.questions.length+1;
+  let changed=false;
+  DB.questions.forEach(q=>{ if(UPS_RENAMES[q.text]){ q.text=UPS_RENAMES[q.text]; changed=true; } });
+  UPS_IO_DEFS.forEach(([loc,d])=>{
+    if(!DB.questions.some(q=>q.text===d[1])){
+      const q={...qFromDef(d,loc)};
+      q.id=loc.toLowerCase()+(DB.qseq++);
+      let idx=-1;
+      DB.questions.forEach((x,i)=>{ if(x.loc===q.loc&&x.section===q.section) idx=i; });
+      if(idx>=0) DB.questions.splice(idx+1,0,q); else DB.questions.push(q);
+      changed=true;
+    }
+  });
+  if(changed) saveDB();
+}
+
+/* ============ MIGRACIÓN v2.7 · Rangos oficiales CPP ============ */
+const CPP_RANGE_UPDATES=[
+ {old:'Unidad de Gas 1 Subestación Sótano. Temperatura',text:'Unidad de Gas 1 Subestación Sótano. Temperatura (debe estar entre 20 y 23°C)',min:20,max:23},
+ {old:'Unidad de Gas 2 Subestación Sótano. Temperatura',text:'Unidad de Gas 2 Subestación Sótano. Temperatura (debe estar entre 20 y 23°C)',min:20,max:23},
+ {old:'Generador Modasa TAR0684GE101. Combustible',text:'Generador Modasa TAR0684GE101. Combustible % (debe ser superior al 50%)',min:50,max:null},
+ {old:'Subestación Sótano TAR0684SU101. Carga total Fase 1',text:'Subestación Sótano TAR0684SU101. Carga total Fase 1 (A) Máximo 200A',min:null,max:200},
+ {old:'Subestación Sótano TAR0684SU101. Carga total Fase 2',text:'Subestación Sótano TAR0684SU101. Carga total Fase 2 (A) Máximo 200A',min:null,max:200},
+ {old:'Subestación Sótano TAR0684SU101. Carga total Fase 3',text:'Subestación Sótano TAR0684SU101. Carga total Fase 3 (A) Máximo 200A',min:null,max:200},
+ {old:'UPS Brazo A TCPECSEUP101. Corriente de salida Fase A',text:'UPS Brazo A TCPECSEUP101. Corriente de salida Fase A (Máximo 84A)',min:null,max:84},
+ {old:'UPS Brazo A TCPECSEUP101. Corriente de salida Fase B',text:'UPS Brazo A TCPECSEUP101. Corriente de salida Fase B (Máximo 84A)',min:null,max:84},
+ {old:'UPS Brazo A TCPECSEUP101. Corriente de salida Fase C',text:'UPS Brazo A TCPECSEUP101. Corriente de salida Fase C (Máximo 84A)',min:null,max:84},
+ {old:'UPS Brazo A TCPECSEUP101. Potencia real Fase A',text:'UPS Brazo A TCPECSEUP101. Potencia real Fase A (Máximo 23kW)',min:null,max:23},
+ {old:'UPS Brazo A TCPECSEUP101. Potencia real Fase B',text:'UPS Brazo A TCPECSEUP101. Potencia real Fase B (Máximo 23kW)',min:null,max:23},
+ {old:'UPS Brazo A TCPECSEUP101. Potencia real Fase C',text:'UPS Brazo A TCPECSEUP101. Potencia real Fase C (Máximo 23kW)',min:null,max:23},
+ {old:'UPS Brazo B TCPECSEUP102. Corriente de salida Fase A',text:'UPS Brazo B TCPECSEUP102. Corriente de salida Fase A (Máximo 94A)',min:null,max:94},
+ {old:'UPS Brazo B TCPECSEUP102. Corriente de salida Fase B',text:'UPS Brazo B TCPECSEUP102. Corriente de salida Fase B (Máximo 94A)',min:null,max:94},
+ {old:'UPS Brazo B TCPECSEUP102. Corriente de salida Fase C',text:'UPS Brazo B TCPECSEUP102. Corriente de salida Fase C (Máximo 94A)',min:null,max:94},
+ {old:'UPS Brazo B TCPECSEUP102. Potencia real Fase A',text:'UPS Brazo B TCPECSEUP102. Potencia real Fase A (Máxima 26kW)',min:null,max:26},
+ {old:'UPS Brazo B TCPECSEUP102. Potencia real Fase B',text:'UPS Brazo B TCPECSEUP102. Potencia real Fase B (Máxima 26kW)',min:null,max:26},
+ {old:'UPS Brazo B TCPECSEUP102. Potencia real Fase C',text:'UPS Brazo B TCPECSEUP102. Potencia real Fase C (Máxima 26kW)',min:null,max:26},
+ {old:'Subestación Ramal A TCPECSEME101. Carga total Fase 1',text:'Subestación Ramal A TCPECSEME101. Carga total Fase 1 (A) Máximo 250A',min:null,max:250},
+ {old:'Subestación Ramal A TCPECSEME101. Carga total Fase 2',text:'Subestación Ramal A TCPECSEME101. Carga total Fase 2 (A) Máximo 250A',min:null,max:250},
+ {old:'Subestación Ramal A TCPECSEME101. Carga total Fase 3',text:'Subestación Ramal A TCPECSEME101. Carga total Fase 3 (A) Máximo 250A',min:null,max:250},
+ {old:'Subestación Ramal B TCPECSEME102. Carga total Fase 1',text:'Subestación Ramal B TCPECSEME102. Carga total Fase 1 (A) Debe ser CERO',min:0,max:0},
+ {old:'Subestación Ramal B TCPECSEME102. Carga total Fase 2',text:'Subestación Ramal B TCPECSEME102. Carga total Fase 2 (A) Debe ser CERO',min:0,max:0},
+ {old:'Subestación Ramal B TCPECSEME102. Carga total Fase 3',text:'Subestación Ramal B TCPECSEME102. Carga total Fase 3 (A) Debe ser CERO',min:0,max:0},
+ {old:'PDU Ramal A TCPECSEPD101. Carga Fase 1',text:'PDU Ramal A TCPECSEPD101. Carga Fase 1 (A) Máximo 190A',min:null,max:190},
+ {old:'PDU Ramal A TCPECSEPD101. Carga Fase 2',text:'PDU Ramal A TCPECSEPD101. Carga Fase 2 (A) Máximo 190A',min:null,max:190},
+ {old:'PDU Ramal A TCPECSEPD101. Carga Fase 3',text:'PDU Ramal A TCPECSEPD101. Carga Fase 3 (A) Máximo 190A',min:null,max:190},
+ {old:'PDU Ramal B TCPECSEPD102. Carga Fase 1',text:'PDU Ramal B TCPECSEPD102. Carga Fase 1 (A) Máximo 210A',min:null,max:210},
+ {old:'PDU Ramal B TCPECSEPD102. Carga Fase 2',text:'PDU Ramal B TCPECSEPD102. Carga Fase 2 (A) Máximo 210A',min:null,max:210},
+ {old:'PDU Ramal B TCPECSEPD102. Carga Fase 3',text:'PDU Ramal B TCPECSEPD102. Carga Fase 3 (A) Máximo 210A',min:null,max:210}
+];
+function migrateCPPRanges(){
+  let changed=false;
+  CPP_RANGE_UPDATES.forEach(u=>{
+    let q=DB.questions.find(x=>x.text===u.old);
+    if(q){ q.text=u.text; q.min=u.min; q.max=u.max; changed=true; }
+    else{
+      q=DB.questions.find(x=>x.text===u.text);
+      if(q&&(q.min!==u.min||q.max!==u.max)){ q.min=u.min; q.max=u.max; changed=true; }
+    }
+  });
+  if(changed) saveDB();
+}
+
+/* ============ MIGRACIÓN v2.8 · Usuarios con estado ============ */
+function migrateUsers(){
+  let changed=false;
+  if(!DB.users.some(u=>u.role==='tech')){
+    TECH_NAMES.forEach(t=>{
+      DB.users.push({u:userFromName(t),p:'1234',role:'tech',name:t,active:true,createdAt:new Date().toISOString()});
+      changed=true;
+    });
+  }
+  DB.users.forEach(u=>{
+    if(u.active===undefined){ u.active=true; changed=true; }
+    if(u.createdAt===undefined){ u.createdAt=new Date().toISOString(); changed=true; }
+  });
+  if(changed) saveDB();
+}
+
+function qFromDef(d,loc){
+  return {loc,section:d[0],text:d[1],type:d[2],unit:d[3],min:d[4],max:d[5],required:d[2]!=='text',
+    options:d[6]?.opts?d[6].opts.map(o=>({label:o[0],normal:!!o[1],w:o[2]||null})):(d[2]==='boolean'?[{label:'Sí',normal:(d[6]?.normal??'Sí')==='Sí'},{label:'No',normal:(d[6]?.normal??'Sí')!=='Sí'}]:[]),
+    ph:d[6]?.ph||'',hm:d[6]?.hm||'',active:true};
+}
+function seedDB(){
+  let n=1;
+  const questions=[
+    ...DEF_CAP.map(d=>qFromDef(d,'CAP')),
+    ...DEF_CPP.map(d=>qFromDef(d,'CPP'))
+  ].map(q=>({...q,id:q.loc.toLowerCase()+(n++)}));
+  DB={v:24,qseq:n,questions,settings:{pinned:[]},
+    users:[
+      {u:'admin',p:'admin123',role:'admin',name:'Administrador',active:true,createdAt:new Date().toISOString()},
+      ...TECH_NAMES.map(t=>({u:userFromName(t),p:'1234',role:'tech',name:t,active:true,createdAt:new Date().toISOString()}))
+    ],
+    runs:[]};
+  seedRuns('CAP',{A:231.5,B:229.8});
+  seedRuns('CPP',{CAT1:497.9,CAT2:501.8,MOD:423.12});
+  DB.runs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  saveDB();
+}
+function weightedPick(opts){
+  const tot=opts.reduce((s,o)=>s+(o.w||(o.normal?25:1)),0);
+  let r=Math.random()*tot;
+  for(const o of opts){r-=(o.w||(o.normal?25:1));if(r<=0)return o.label;}
+  return opts[opts.length-1].label;
+}
+function genDemoNum(q,loc,hm){
+  if(q.hm){hm[q.hm]=+(hm[q.hm]+Math.random()*1.8+.3).toFixed(2);return hm[q.hm];}
+  if(q.min!=null||q.max!=null){
+    let lo=q.min, hi=q.max;
+    if(lo==null&&hi!=null) lo=hi-(hi<=30?hi*.6:hi*.4);
+    if(hi==null&&lo!=null) hi=lo+(lo<=30?lo*.6:lo*.4);
+    const c=(lo+hi)/2, r=hi-lo;
+    let v=c+(Math.random()-.5)*r*.55;
+    if(Math.random()<.07) v=(Math.random()<.5? lo-r*.14 : hi+r*.14);
+    return +v.toFixed(hi<10?2:1);
+  }
+  const t=q.text;
+  if(/Potencia real Total|Potencia total/.test(t)) return Math.round(58+Math.random()*14);
+  if(/Potencia/.test(t)) return Math.round(14+Math.random()*12);
+  if(/Tiempo de respaldo/.test(t)) return +(20+Math.random()*9).toFixed(1);
+  if(/PUE/.test(t)) return +(1.28+Math.random()*.14).toFixed(2);
+  if(/Combustible/.test(t)) return Math.round(88+Math.random()*17);
+  if(/Carga/.test(t)) return Math.round(40+Math.random()*215);
+  if(/Corriente/.test(t)){
+    if(/de entrada/.test(t)){
+      if(loc==='CPP'&&/UPS/.test(t)) return Math.round(78+Math.random()*26);
+      return Math.round(118+Math.random()*38);
+    }
+    if(/de salida/.test(t)){
+      if(loc==='CPP'&&/UPS/.test(t)) return Math.round(70+Math.random()*24);
+      return Math.round(105+Math.random()*32);
+    }
+    if(loc==='CPP'&&/UPS/.test(t)) return Math.round(70+Math.random()*28);
+    if(/Medidor Principal/.test(t)) return Math.round(395+Math.random()*85);
+    if(/UPS/.test(t)) return Math.round(108+Math.random()*85);
+    if(/brazo|Brazo/.test(t)) return Math.round(170+Math.random()*80);
+    return Math.round(150+Math.random()*130);
+  }
+  return Math.round(40+Math.random()*80);
+}
+function seedRuns(loc,hm){
+  const qs=DB.questions.filter(q=>q.loc===loc);
+  const techs=DB.users.filter(u=>u.role==='tech'&&(u.active!==false));
+  const DEMO_NOTES=['Se detectó falla y se reportó al supervisor de turno.','Avería reportada, pendiente de repuesto.','Se reportó y se dejó funcionando en modo de respaldo.','Reportado por teléfono, se espera visita del proveedor.'];
+  for(let d=13;d>=0;d--){
+    const day=new Date(); day.setDate(day.getDate()-d); day.setHours(8,0,0,0);
+    if(day.getDay()===0) continue;
+    const tech=techs[(d+(loc==='CPP'?4:0))%techs.length];
+    const dur=Math.floor((35+Math.random()*55)*60);
+    const run={id:uid('R'),loc,date:day.toISOString(),techName:tech.name,
+      ticket:'SCTASK10'+(72000+d*37+(loc==='CPP'?5103:0)),
+      startedAt:day.toISOString(),
+      endedAt:new Date(day.getTime()+dur*1000).toISOString(),
+      durationSec:dur,
+      answers:{},outOfRange:[]};
+    qs.forEach(q=>{
+      let val;
+      if(q.type==='number') val=genDemoNum(q,loc,hm);
+      else if(q.type==='text') val=Math.random()<.5?'Sin novedades. Todo en orden':'Sin parámetros fuera de rango reportados';
+      else if(q.type==='multi'){
+        val=q.options.filter(o=>o.normal).map(o=>o.label);
+        const bads=q.options.filter(o=>!o.normal);
+        if(bads.length&&Math.random()<.06) val.push(bads[Math.floor(Math.random()*bads.length)].label);
+      }
+      else val=weightedPick(q.options);
+      run.answers[q.id]=val;
+      const ev=evalAnswer(q,val);
+      if(ev.oor) run.outOfRange.push({qid:q.id,qtext:q.text,section:q.section,value:fmtVal(q,val),expected:ev.expected,
+        confirmed:Math.random()<.55,
+        note:Math.random()<.4?DEMO_NOTES[Math.floor(Math.random()*DEMO_NOTES.length)]:'',
+        reviewed:false,reviewNote:''});
+    });
+    DB.runs.push(run);
+  }
+}
+function loadDB(){
+  try{DB=JSON.parse(localStorage.getItem(KEY))}catch(e){DB=null}
+  if(!DB||!DB.questions||!DB.questions.some(q=>q.loc==='CPP')){seedDB();return;}
+  const ids=new Set(DB.questions.map(q=>q.id));
+  if(ids.size!==DB.questions.length){seedDB();return;}
+  if(!DB.settings) DB.settings={pinned:[]};
+  if(!Array.isArray(DB.settings.pinned)) DB.settings.pinned=[];
+  if(!DB.users) DB.users=[];
+  DB.runs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  DB.runs.forEach(r=>{
+    if(!r.loc) r.loc='CAP';
+    if(!r.answers) r.answers={};
+    if(r.durationSec==null){
+      r.durationSec=(r.startedAt&&r.endedAt)?Math.max(0,Math.floor((new Date(r.endedAt)-new Date(r.startedAt))/1000)):null;
+    }
+    const seen=new Set();
+    r.outOfRange=(r.outOfRange||[]).map(a=>{
+      if(!a||seen.has(a.qid))return null;seen.add(a.qid);
+      if(a.reviewNote===undefined)a.reviewNote='';
+      return a;
+    }).filter(Boolean);
+  });
+  migrateUPSIO();
+  migrateCPPRanges();
+  migrateUsers();
+}
+function saveDB(){
+  localStorage.setItem(KEY,JSON.stringify(DB));
+  if(window.FirebaseSync) FirebaseSync.push(DB);
+}
+const getQ=id=>DB.questions.find(q=>q.id===id);
+const activeQs=loc=>DB.questions.filter(q=>q.active&&(!loc||loc==='ALL'||q.loc===loc));
+const runsFor=()=>DB.runs.filter(r=>locFilter==='ALL'||r.loc===locFilter);
+const locBadge=l=>`<span class="pill ${l==='CAP'?'cap':'cpp'}">${l}</span>`;
+const shortName=q=>{let t=q.text;const p=q.section+'. ';if(t.startsWith(p))t=t.slice(p.length);return t;};
+const runDur=r=>r.durationSec!=null?r.durationSec:(r.startedAt&&r.endedAt?Math.max(0,Math.floor((new Date(r.endedAt)-new Date(r.startedAt))/1000)):null);
+
+/* ================== VALIDACIÓN ================== */
+function evalAnswer(q,val){
+  if(val===''||val==null||(Array.isArray(val)&&!val.length)) return {oor:false,skip:true};
+  if(q.type==='number'){
+    const v=parseFloat(val); if(isNaN(v)) return {oor:false,skip:true};
+    if(q.min!=null&&v<q.min) return {oor:true,expected:'≥ '+q.min+(q.unit?' '+q.unit:'')};
+    if(q.max!=null&&v>q.max) return {oor:true,expected:'≤ '+q.max+(q.unit?' '+q.unit:'')};
+    return {oor:false};
+  }
+  if(q.type==='select'||q.type==='boolean'){
+    const o=(q.options||[]).find(x=>x.label===val);
+    if(o&&!o.normal) return {oor:true,expected:'Se espera: '+q.options.filter(x=>x.normal).map(x=>x.label).join(' / ')};
+    return {oor:false};
+  }
+  if(q.type==='multi'){
+    const bad=(val||[]).filter(l=>{const o=(q.options||[]).find(x=>x.label===l);return o&&!o.normal});
+    if(bad.length) return {oor:true,expected:'No debería presentarse: '+bad.join(', ')};
+    return {oor:false};
+  }
+  return {oor:false};
+}
+function fmtVal(q,val){
+  if(val===''||val==null) return '—';
+  if(Array.isArray(val)) return val.join(', ');
+  if(q.type==='number') return val+(q.unit?' '+q.unit:'');
+  return String(val);
+}
+function rangeLabel(q){
+  if(q.min==null&&q.max==null) return '';
+  if(q.min!=null&&q.max!=null) return `${q.min} – ${q.max}${q.unit?' '+q.unit:''}`;
+  if(q.min!=null) return `≥ ${q.min}${q.unit?' '+q.unit:''}`;
+  return `≤ ${q.max}${q.unit?' '+q.unit:''}`;
+}
+const allAlerts=()=>DB.runs.flatMap(r=>r.outOfRange.map(a=>({...a,runId:r.id,date:r.date,tech:r.techName,ticket:r.ticket,loc:r.loc})));
+const alertsFor=()=>allAlerts().filter(a=>locFilter==='ALL'||a.loc===locFilter);
+const allPen=()=>allAlerts().filter(a=>!a.reviewed);
+const pendAlerts=()=>alertsFor().filter(a=>!a.reviewed);
+const revAlerts=()=>alertsFor().filter(a=>a.reviewed);
+
+/* ================== LOGIN (respeta usuarios activos) ================== */
+function setRole(r){role=r;$('#rtAdm').classList.toggle('on',r==='admin');$('#rtTec').classList.toggle('on',r==='tech');
+  $('#fAdmin').classList.toggle('hidden',r!=='admin');$('#fTech').classList.toggle('hidden',r!=='tech');$('#lerr').classList.add('hidden');}
+function doLogin(){
+  let u=null;
+  if(role==='admin'){const uu=$('#lu').value.trim(),pp=$('#lp').value;u=DB.users.find(x=>x.role==='admin'&&x.u===uu&&x.p===pp);}
+  else{const nn=$('#lt').value,pp=$('#lpin').value;u=DB.users.find(x=>x.role==='tech'&&x.name===nn&&x.p===pp&&(x.active!==false));}
+  if(!u){$('#lerr').textContent='Credenciales incorrectas. Verifica e intenta de nuevo.';$('#lerr').classList.remove('hidden');return;}
+  sessionStorage.setItem('mantcap_ses',JSON.stringify({role:u.role,name:u.name}));
+  openApp();
+}
+function logout(){sessionStorage.removeItem('mantcap_ses');location.reload();}
+function openApp(){
+  SES=JSON.parse(sessionStorage.getItem('mantcap_ses'));
+  $('#login').classList.add('hidden');$('#app').classList.remove('hidden');
+  $('#whoName').textContent=SES.name;$('#whoAva').textContent=SES.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  buildNav();
+  if(SES.role==='admin') showTab('dash'); else showTab('form');
+}
+
+/* ================== NAVEGACIÓN ================== */
+const ADMIN_TABS=[
+ {id:'dash',l:'Resumen',ic:'dash'},{id:'charts',l:'Gráficas',ic:'chart'},{id:'qs',l:'Preguntas',ic:'list'},
+ {id:'hist',l:'Historial',ic:'hist'},{id:'alerts',l:'Fuera de rango',ic:'alert',badge:1},{id:'set',l:'Ajustes',ic:'gear'}];
+const TECH_TABS=[{id:'form',l:'Nuevo recorrido',ic:'form'},{id:'myruns',l:'Mis recorridos',ic:'hist'}];
+function buildNav(){
+  const tabs=SES.role==='admin'?ADMIN_TABS:TECH_TABS;
+  const html=tabs.map(t=>`<button class="nitem ${t.id===currentTab?'on':''}" data-t="${t.id}" onclick="showTab('${t.id}')">${IC[t.ic]}<span>${t.l}</span>${t.badge?`<span class="cnt hidden" id="alertCnt"></span>`:''}</button>`).join('');
+  $('#sideNav').innerHTML=`<div class="brand"><span class="mark">M</span><b style="color:#fff">MantCAP</b></div><nav>${html}</nav>
+    <div class="foot">${SES.role==='admin'?'Perfil: Administrador':'Perfil: Técnico'}<br>Ubicaciones: CAP · CPP<br>MantCAP <span class="ver">${APP_VERSION}</span></div>`;
+  $('#mobNav').innerHTML=html;
+  updateBadges();
+}
+function updateBadges(){
+  const n=allPen().length;const b=$('#alertCnt');
+  if(b){b.textContent=n;b.classList.toggle('hidden',!n);}
+}
+function showTab(t){
+  clearTimer();
+  currentTab=t;
+  $$('.nitem').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  const titles={dash:'Resumen general',charts:'Gráficas por equipo',qs:'Administración de preguntas',hist:'Historial de recorridos',alerts:'Mediciones fuera de rango',set:'Ajustes',form:'Recorrido de mantenimiento',myruns:'Mis recorridos',users:'Usuarios técnicos'};
+  $('#pageTitle').textContent=titles[t]||'';
+  charts.forEach(c=>c.destroy());charts.clear();
+  ({dash:renderDash,charts:renderCharts,qs:renderQuestions,hist:renderHistory,alerts:renderAlerts,set:renderSettings,form:renderTechForm,myruns:renderMyRuns,users:renderUsers})[t]();
+}
+function setLoc(l){locFilter=l;showTab(currentTab);}
+function locBar(extra=''){
+  if(SES.role!=='admin') return '';
+  return `<div class="toolbar">
+    <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px">Ubicación:</span>
+    <button class="chip ${locFilter==='ALL'?'on':''}" onclick="setLoc('ALL')">Todas</button>
+    <button class="chip ${locFilter==='CAP'?'on':''}" onclick="setLoc('CAP')">CAP</button>
+    <button class="chip ${locFilter==='CPP'?'on':''}" onclick="setLoc('CPP')">CPP</button>
+    <span style="flex:1"></span>${extra}</div>`;
+}
+
+/* ================== TOAST / MODAL ================== */
+function toast(msg,cls=''){const d=document.createElement('div');d.className='toast '+cls;d.innerHTML=msg;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),3800);}
+function modal(html,wide){$('#modalHost').innerHTML=`<div class="mask" onclick="if(event.target===this)closeModal()"><div class="modal ${wide?'wide':''}">${html}</div></div>`;}
+function closeModal(){$('#modalHost').innerHTML='';}
+function confirmModal(msg,onOk,okLbl='Confirmar'){
+  window.__ok=()=>{onOk();closeModal();};
+  modal(`<div class="mh"><h3>Confirmar</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mb">${msg}</div>
+  <div class="mf"><button class="btn btn-gho" onclick="closeModal()">Cancelar</button><button class="btn btn-bad" onclick="__ok()">${okLbl}</button></div>`);
+}
+
+/* ================== AGRUPACIÓN (entrada/salida separadas) ================== */
+const unitKey=q=>(q.unit||'').trim()||'val';
+function groupKeyFor(q){
+  const u=unitKey(q);
+  if(u==='A'&&/corriente/i.test(q.text)){
+    if(/de entrada/i.test(q.text)) return 'Entrada · A';
+    if(/de salida/i.test(q.text)) return 'Salida · A';
+  }
+  return u;
+}
+function groupLabel(k){
+  const map={'Entrada · A':'Corriente de entrada (A)','Salida · A':'Corriente de salida (A)','A':'Corriente (A)','kW':'Potencia (kW)','°C':'Temperatura (°C)','%':'Porcentaje (%)','min':'Tiempo (min)','V':'Voltaje (V)','PSI':'Presión (PSI)','°F':'Temperatura (°F)','val':'Valores'};
+  return map[k]||('Valores ('+k+')');
+}
+function groupByUnit(qs){
+  const m=new Map();
+  qs.forEach(q=>{const k=groupKeyFor(q);if(!m.has(k))m.set(k,[]);m.get(k).push(q);});
+  return [...m.entries()];
+}
+function metricInGroupLabel(q,gk){
+  const t=shortName(q);
+  const fase=t.match(/Fase\s+([ABC1-3])/i);
+  if(gk==='Entrada · A'||gk==='Salida · A'||gk==='A'){
+    if(fase) return 'Fase '+fase[1].toUpperCase();
+    return t;
+  }
+  if(gk==='kW'){
+    if(/total/i.test(t)) return 'Total';
+    if(fase) return 'Fase '+fase[1].toUpperCase();
+    return t;
+  }
+  return t;
+}
+function currentDiffs(qs,useRange=false){
+  const locs=[...new Set(qs.map(q=>q.loc))];
+  let runs=DB.runs.filter(r=>locs.includes(r.loc)&&(locFilter==='ALL'||r.loc===locFilter));
+  if(useRange) runs=runs.filter(inChartRange);
+  runs=runs.slice().reverse();
+  const last=runs[0]; if(!last) return [];
+  const out=[];
+  qs.filter(q=>/de entrada/i.test(q.text)&&/Fase [ABC]/i.test(q.text)).forEach(e=>{
+    const ph=e.text.match(/Fase ([ABC])/i)[1];
+    const s=qs.find(q=>/de salida/i.test(q.text)&&q.text.includes('Fase '+ph.toUpperCase()));
+    if(!s) return;
+    const ve=parseFloat(last.answers?.[e.id]), vs=parseFloat(last.answers?.[s.id]);
+    if(isNaN(ve)||isNaN(vs)) return;
+    const d=ve-vs, pct=ve?((d/ve)*100).toFixed(1):'—';
+    out.push(`Fase ${ph.toUpperCase()}: ${ve} → ${vs}${e.unit?' '+e.unit:''} <span style="color:var(--warn)">(Δ ${d>=0?'+':''}${d.toFixed(1)} · ${pct}%)</span>`);
+  });
+  return out;
+}
+
+/* ================== ADMIN · RESUMEN ================== */
+let dashFrom='', dashTo='', dashQuick='all';
+function quickRange(k){
+  dashQuick=k;
+  const t=new Date(); const iso=d=>d.toISOString().slice(0,10);
+  if(k==='all'){dashFrom='';dashTo='';}
+  else if(k==='today'){dashFrom=iso(t);dashTo=iso(t);}
+  else if(k==='7'){const d=new Date();d.setDate(d.getDate()-6);dashFrom=iso(d);dashTo='';}
+  else if(k==='30'){const d=new Date();d.setDate(d.getDate()-29);dashFrom=iso(d);dashTo='';}
+  else if(k==='month'){dashFrom=t.toISOString().slice(0,8)+'01';dashTo='';}
+  renderDash();
+}
+function renderDash(){
+  const runs=runsFor();
+  const month=new Date().toISOString().slice(0,7);
+  const mRuns=runs.filter(r=>r.date.slice(0,7)===month);
+  const al=alertsFor(), pen=pendAlerts();
+  let totMeas=0, okMeas=0;
+  runs.forEach(r=>{const n=Object.keys(r.answers||{}).length; const a=Math.min((r.outOfRange||[]).length,n); totMeas+=n; okMeas+=(n-a);});
+  const compliance=totMeas?((okMeas/totMeas)*100).toFixed(1)+'%':'—';
+  const secCnt={};al.forEach(a=>secCnt[a.section]=(secCnt[a.section]||0)+1);
+  const topSec=Object.entries(secCnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const capN=DB.runs.filter(r=>r.loc==='CAP').length, cppN=DB.runs.filter(r=>r.loc==='CPP').length;
+  const allRuns=runsFor().filter(r=>(!dashFrom||r.date.slice(0,10)>=dashFrom)&&(!dashTo||r.date.slice(0,10)<=dashTo));
+  const qc=k=>`<button class="chip ${dashQuick===k?'on':''}" onclick="quickRange('${k}')">${{all:'Todo',today:'Hoy','7':'7 días','30':'30 días',month:'Este mes'}[k]}</button>`;
+  $('#content').innerHTML=`
+  ${locBar()}
+  <div class="grid g4">
+    <div class="card kpi"><div class="v">${runs.length}</div><div class="l">Recorridos registrados</div></div>
+    <div class="card kpi"><div class="v">${mRuns.length}</div><div class="l">Recorridos este mes</div></div>
+    <div class="card kpi"><div class="v" style="color:var(--bad)">${pen.length}</div><div class="l">Alertas pendientes de revisión</div></div>
+    <div class="card kpi"><div class="v" style="color:var(--ok)">${compliance}</div><div class="l">Mediciones dentro de rango</div></div>
+  </div>
+  ${locFilter==='ALL'?`<p style="font-size:12.5px;color:var(--mut);margin:10px 2px">CAP: ${capN} recorridos · CPP: ${cppN} recorridos</p>`:''}
+  <div class="grid g2" style="margin-top:8px">
+    <div class="card">
+      <div class="hd"><h3>Últimos recorridos</h3><span class="sp"><button class="btn btn-gho btn-sm" onclick="showTab('hist')">Ver todos</button></span></div>
+      ${runs.length?`<table class="tb">
+        <tr><th>Fecha</th><th>Sitio</th><th>Técnico</th><th>Ticket</th><th>Duración</th><th>Estado</th><th></th></tr>
+        ${runs.slice(0,6).map(r=>`<tr>
+          <td style="white-space:nowrap"><b>${fmtD(r.date)}</b></td>
+          <td>${locBadge(r.loc)}</td>
+          <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.techName)}">${esc(r.techName)}</td>
+          <td style="white-space:nowrap;color:var(--mut)">${esc(r.ticket)}</td>
+          <td style="white-space:nowrap">${fmtDur(runDur(r))}</td>
+          <td>${r.outOfRange.length
+            ?`<span class="pill bad">${r.outOfRange.length} fuera de rango</span>`
+            :`<span class="pill ok">OK</span>`}</td>
+          <td style="text-align:right"><button class="btn btn-gho btn-sm" onclick="openRunModal('${r.id}')">Ver</button></td>
+        </tr>`).join('')}
+      </table>`:'<div class="empty">Sin recorridos aún</div>'}
+    </div>
+    <div class="card"><div class="hd"><h3>Secciones con más alertas</h3></div><div class="bd">
+      ${topSec.map(([s,c])=>{const max=topSec[0][1];return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><b>${esc(s)}</b><span style="color:var(--mut)">${c}</span></div>
+        <div class="prog" style="margin:0"><i style="width:${(c/max*100).toFixed(0)}%;background:var(--bad)"></i></div></div>`}).join('')||'<div class="empty">Sin alertas registradas 🎉</div>'}
+    </div></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="hd"><h3>Todos los informes (${allRuns.length})</h3>
+      <span class="sp">
+        <input type="date" value="${dashFrom}" onchange="dashFrom=this.value;dashQuick='custom';renderDash()">
+        <span style="color:var(--mut)">→</span>
+        <input type="date" value="${dashTo}" onchange="dashTo=this.value;dashQuick='custom';renderDash()">
+        ${qc('all')}${qc('today')}${qc('7')}${qc('30')}${qc('month')}
+      </span></div>
+    <div style="max-height:480px;overflow:auto">
+    ${allRuns.length?`<table class="tb">
+      <tr><th>Fecha y hora</th><th>Sitio</th><th>Técnico</th><th>Ticket</th><th>Duración</th><th>Alertas</th><th></th></tr>
+      ${allRuns.map(r=>`<tr>
+        <td style="white-space:nowrap">${fmtDT(r.date)}</td>
+        <td>${locBadge(r.loc)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.techName)}">${esc(r.techName)}</td>
+        <td style="white-space:nowrap;color:var(--mut)">${esc(r.ticket)}</td>
+        <td style="white-space:nowrap">${fmtDur(runDur(r))}</td>
+        <td>${r.outOfRange.length?`<span class="pill bad">${r.outOfRange.length}</span>`:'<span class="pill ok">0</span>'}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-gho btn-sm" onclick="openRunModal('${r.id}')">Ver</button>
+          <button class="btn btn-gho btn-sm" onclick="exportRunPDF('${r.id}')">PDF</button>
+        </td></tr>`).join('')}
+    </table>`:'<div class="empty">No hay recorridos en el rango seleccionado</div>'}
+    </div>
+  </div>`;
+}
+
+/* ================== GRÁFICAS (comunes) ================== */
+function groupChartConfig(qs,opts={}){
+  const locs=[...new Set(qs.map(q=>q.loc))];
+  const runs=DB.runs.filter(r=>locs.includes(r.loc)&&(locFilter==='ALL'||r.loc===locFilter)&&inChartRange(r)&&qs.some(q=>r.answers&&r.answers[q.id]!=null&&r.answers[q.id]!=='')).slice().reverse();
+  const labels=runs.map(r=>fmtD(r.date));
+  const datasets=qs.map((q,i)=>({label:shortName(q),
+    data:runs.map(r=>{const v=r.answers?.[q.id];return v!=null&&v!==''?parseFloat(v):null;}),
+    borderColor:CHART_COLORS[i%CHART_COLORS.length],backgroundColor:CHART_COLORS[i%CHART_COLORS.length],
+    tension:.3,pointRadius:opts.small?2:2.5,borderWidth:2,fill:false,spanGaps:true}));
+  if(qs.length<=3&&qs.every(q=>q.min===qs[0].min&&q.max===qs[0].max)){
+    const q0=qs[0];
+    if(q0.min!=null) datasets.push({label:'Mín '+q0.min,data:labels.map(()=>q0.min),borderColor:'#178f5f',borderDash:[6,4],pointRadius:0,fill:false});
+    if(q0.max!=null) datasets.push({label:'Máx '+q0.max,data:labels.map(()=>q0.max),borderColor:'#d13c3c',borderDash:[6,4],pointRadius:0,fill:false});
+  }
+  return {runs,config:{type:'line',data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:10,font:{size:10}}}},
+      scales:{y:{beginAtZero:false}}}}};
+}
+function mountGroupChart(cv,qs,opts={}){
+  if(!cv||!qs.length) return;
+  const {runs,config}=groupChartConfig(qs,opts);
+  new Chart(cv,config);
+  return runs;
+}
+async function renderGroupImg(qs,opts={}){
+  const {runs,config}=groupChartConfig(qs,opts);
+  if(!runs.length) return {img:null,runs};
+  const cv=document.createElement('canvas');
+  cv.width=1000; cv.height=460;
+  const ch=new Chart(cv,{...config,options:{...config.options,responsive:false,animation:false,devicePixelRatio:2}});
+  await new Promise(r=>setTimeout(r,80));
+  const img=cv.toDataURL('image/png');
+  ch.destroy();
+  return {img,runs};
+}
+
+/* ================== ADMIN · GRÁFICAS ================== */
+let chartGroup='', chartSelIds=[], kwF='';
+let chFrom='', chTo='', chQuick='all';
+const KWS=['','Corriente','Potencia','Temperatura','Voltaje','Humedad','Presión','Tiempo','PUE'];
+function kwLabel(k){return k||'Todas';}
+function chQuickRange(k){
+  chQuick=k;
+  const t=new Date(); const iso=d=>d.toISOString().slice(0,10);
+  if(k==='all'){chFrom='';chTo='';}
+  else if(k==='today'){chFrom=iso(t);chTo=iso(t);}
+  else if(k==='7'){const d=new Date();d.setDate(d.getDate()-6);chFrom=iso(d);chTo='';}
+  else if(k==='30'){const d=new Date();d.setDate(d.getDate()-29);chFrom=iso(d);chTo='';}
+  else if(k==='month'){chFrom=t.toISOString().slice(0,8)+'01';chTo='';}
+  renderCharts();
+}
+function inChartRange(r){
+  const d=r.date.slice(0,10);
+  return (!chFrom||d>=chFrom)&&(!chTo||d<=chTo);
+}
+function chartRangeLabel(){
+  if(!chFrom&&!chTo) return 'Todo el historial';
+  const f=chFrom?fmtD(chFrom):'inicio', t=chTo?fmtD(chTo):'hoy';
+  return `${f} → ${t}`;
+}
+function allNumQs(){return activeQs(locFilter).filter(q=>q.type==='number');}
+function defaultSel(){
+  const g=allNumQs().filter(q=>q.section===chartGroup);
+  const cur=g.filter(q=>/corriente/i.test(q.text));
+  return (cur.length?cur:g.slice(0,3)).map(q=>q.id);
+}
+function visQs(){
+  return allNumQs().filter(q=>q.section===chartGroup&&(!kwF||q.text.toLowerCase().includes(kwF.toLowerCase())));
+}
+function groupVisQs(k){
+  return visQs().filter(q=>groupKeyFor(q)===k);
+}
+function togGroup(k){
+  const gq=groupVisQs(k);
+  const allSel=gq.length>0&&gq.every(q=>chartSelIds.includes(q.id));
+  gq.forEach(q=>{
+    const i=chartSelIds.indexOf(q.id);
+    if(allSel){ if(i>=0) chartSelIds.splice(i,1); }
+    else if(i<0) chartSelIds.push(q.id);
+  });
+  renderCharts();
+}
+function renderCharts(){
+  const qs=allNumQs();
+  const secs=[...new Set(qs.map(q=>q.section))];
+  if(!chartGroup||!secs.includes(chartGroup)){chartGroup=secs[0]||'';kwF='';chartSelIds=defaultSel();}
+  chartSelIds=chartSelIds.filter(id=>qs.some(q=>q.id===id));
+  if(!chartSelIds.length) chartSelIds=defaultSel();
+  const vis=visQs();
+  const gMap=new Map();
+  vis.forEach(q=>{const k=groupKeyFor(q);if(!gMap.has(k))gMap.set(k,[]);gMap.get(k).push(q);});
+  const selQs=chartSelIds.map(getQ).filter(Boolean);
+  const selGroups=groupByUnit(selQs);
+  const hasOut=selGroups.some(([k])=>k==='Salida · A');
+  const diffIdx=selGroups.findIndex(([k])=>hasOut?k==='Salida · A':k==='Entrada · A');
+  const cqc=k=>`<button class="chip ${chQuick===k?'on':''}" onclick="chQuickRange('${k}')">${{all:'Todo',today:'Hoy','7':'7 días','30':'30 días',month:'Este mes'}[k]}</button>`;
+  $('#content').innerHTML=`${locBar()}
+  <div class="card"><div class="hd"><h3>Comparativa por equipo · agrupadas por tipo</h3></div><div class="bd">
+    ${qs.length?`
+      <div class="toolbar">
+        <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase">Equipo:</span>
+        <select style="max-width:320px" onchange="chartGroup=this.value;kwF='';chartSelIds=defaultSel();renderCharts()">
+          ${secs.map(s=>`<option ${s===chartGroup?'selected':''}>${esc(s)}</option>`).join('')}
+        </select>
+        <span style="width:14px"></span>
+        <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase">Filtrar:</span>
+        ${KWS.map(k=>`<button class="chip ${kwF===k?'on':''}" onclick="kwF='${k}';renderCharts()">${kwLabel(k)}</button>`).join('')}
+      </div>
+      <div class="toolbar">
+        <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase">Rango de fechas:</span>
+        <input type="date" value="${chFrom}" onchange="chFrom=this.value;chQuick='custom';renderCharts()">
+        <span style="color:var(--mut)">→</span>
+        <input type="date" value="${chTo}" onchange="chTo=this.value;chQuick='custom';renderCharts()">
+        ${cqc('all')}${cqc('today')}${cqc('7')}${cqc('30')}${cqc('month')}
+        <span class="pill mut" style="margin-left:4px">📅 ${esc(chartRangeLabel())}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">Métricas a graficar:</span>
+        <button class="btn btn-gho btn-sm" onclick="selAllVis()">Todas</button>
+        <button class="btn btn-gho btn-sm" onclick="clearSel()">Ninguna</button>
+      </div>
+      <div class="mgrid">
+        ${[...gMap.entries()].map(([k,gq])=>{
+          const allSel=gq.every(q=>chartSelIds.includes(q.id));
+          const selN=gq.filter(q=>chartSelIds.includes(q.id)).length;
+          return `<div class="mgroup">
+            <div class="mg-hd">
+              <b>${esc(groupLabel(k))}</b>
+              <span class="cnt">${selN}/${gq.length}</span>
+              <button class="btn ${allSel?'btn-gho':'btn-ok'} btn-sm" onclick="togGroup('${esc(k)}')">${allSel?'Ninguna':'Todas'}</button>
+            </div>
+            <div class="mg-body">
+              ${gq.map(q=>`<label class="mchk ${chartSelIds.includes(q.id)?'on':''}" title="${esc(q.text)}">
+                <input type="checkbox" ${chartSelIds.includes(q.id)?'checked':''} onchange="togChart('${q.id}')">
+                ${esc(metricInGroupLabel(q,k))}
+              </label>`).join('')}
+            </div>
+          </div>`;
+        }).join('')||'<span style="color:var(--mut);font-size:13px">Sin métricas para este filtro</span>'}
+      </div>
+      <div class="toolbar">
+        <span style="flex:1"></span>
+        <button class="btn btn-ok btn-sm" onclick="reportModal()">📄 Generar informe</button>
+      </div>`
+    :'<div class="empty">No hay mediciones numéricas para esta ubicación</div>'}
+  </div></div>
+  ${qs.length?`<div class="grid g2" style="margin-top:14px">
+    ${selGroups.map(([unit,gq],gi)=>{
+      return `<div class="card">
+        <div class="hd"><h3>Comparativa · ${esc(groupLabel(unit))}</h3>
+          <span class="sp"><span class="pill mut">${esc(chartGroup)}</span><span class="pill cap">${gq.length} series</span></span></div>
+        <div class="bd"><div class="chart-wrap" style="height:280px"><canvas id="mcg_${gi}"></canvas></div>
+          <p id="mgmeta_${gi}" style="margin-top:8px;font-size:12px;color:var(--mut)"></p></div>
+      </div>`;
+    }).join('')||'<div class="empty" style="grid-column:1/-1">Selecciona métricas para comparar</div>'}
+  </div>`:''}`;
+  selGroups.forEach(([unit,gq],gi)=>{
+    const runs=mountGroupChart($('#mcg_'+gi),gq);
+    const meta=$('#mgmeta_'+gi); if(!meta) return;
+    let extra='';
+    if(gi===diffIdx){
+      const diffs=currentDiffs(selQs,true);
+      if(diffs.length) extra=`<br>Entrada → salida: ${diffs.join(' · ')}`;
+    }
+    const period=runs&&runs.length?` · ${fmtD(runs[0].date)} → ${fmtD(runs[runs.length-1].date)}`:'';
+    meta.innerHTML=`${gq.length} series · ${runs?.length||0} recorridos en <b>${esc(chartRangeLabel())}</b>${period}${extra}`;
+    if(!runs||!runs.length) meta.innerHTML+=`<br><span style="color:var(--warn)">No hay recorridos en el rango seleccionado — amplía el filtro de fechas.</span>`;
+  });
+}
+function togChart(id){
+  const i=chartSelIds.indexOf(id);
+  if(i>=0) chartSelIds.splice(i,1); else chartSelIds.push(id);
+  renderCharts();
+}
+function selAllVis(){
+  visQs().forEach(q=>{if(!chartSelIds.includes(q.id))chartSelIds.push(q.id);});
+  renderCharts();
+}
+function clearSel(){chartSelIds=[];renderCharts();}
+
+/* ================== INFORME DE ANÁLISIS ================== */
+let repTeams=[];
+function chartStats(q){
+  const runs=DB.runs.filter(r=>r.loc===q.loc&&(locFilter==='ALL'||r.loc===locFilter)&&inChartRange(r)&&r.answers&&r.answers[q.id]!=null&&r.answers[q.id]!=='').slice().reverse();
+  const vals=runs.map(r=>parseFloat(r.answers[q.id])).filter(v=>!isNaN(v));
+  if(!vals.length) return null;
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  const mn=Math.min(...vals), mx=Math.max(...vals);
+  const oor=vals.filter(v=>(q.min!=null&&v<q.min)||(q.max!=null&&v>q.max)).length;
+  return {n:vals.length,avg,mn,mx,last:vals[vals.length-1],oor,pct:((oor/vals.length)*100).toFixed(1)};
+}
+function oorRowsForQs(qs){
+  const rows=[];
+  qs.forEach(q=>{
+    DB.runs.filter(r=>r.loc===q.loc&&(locFilter==='ALL'||r.loc===locFilter)&&inChartRange(r)).forEach(r=>{
+      const a=(r.outOfRange||[]).find(x=>x.qid===q.id);
+      if(a) rows.push([fmtD(r.date),shortName(q),a.value,a.expected,(a.confirmed?'Reportada':'No reportada')+(a.note?' — '+a.note:'')]);
+    });
+  });
+  return rows;
+}
+function repTeamList(){
+  return [...new Set(allNumQs().map(q=>q.section))];
+}
+function repCountLabel(){
+  const n=repTeams.length;
+  return n===0?'Ninguno seleccionado':n===1?'1 equipo seleccionado':`${n} equipos seleccionados`;
+}
+function togRepEq(i){
+  const all=repTeamList();
+  const s=all[i]; if(s==null) return;
+  const ix=repTeams.indexOf(s);
+  if(ix>=0) repTeams.splice(ix,1); else repTeams.push(s);
+  document.getElementById('req_'+i)?.classList.toggle('on',repTeams.includes(s));
+  const cnt=$('#repCount'); if(cnt) cnt.textContent=repCountLabel();
+}
+function repSelAll(on){
+  repTeams=on?[...repTeamList()]:[];
+  repTeamList().forEach((s,i)=>{
+    document.getElementById('req_'+i)?.classList.toggle('on',repTeams.includes(s));
+  });
+  const cnt=$('#repCount'); if(cnt) cnt.textContent=repCountLabel();
+}
+function reportModal(){
+  if(!chartSelIds.length){toast('Selecciona al menos una métrica','bad');return;}
+  const selQs=chartSelIds.map(getQ).filter(Boolean);
+  const groups=groupByUnit(selQs);
+  const locs=[...new Set(selQs.map(q=>q.loc))];
+  const nRuns=DB.runs.filter(r=>locs.includes(r.loc)&&(locFilter==='ALL'||r.loc===locFilter)&&inChartRange(r)).length;
+  if(!nRuns){toast('No hay recorridos en el rango seleccionado — ajusta las fechas','bad');return;}
+  const teams=repTeamList();
+  repTeams=[chartGroup];
+  modal(`<div class="mh"><h3>📄 Generar informe de análisis</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mb">
+    <div style="background:#f6f8fb;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--mut);margin-bottom:12px">
+      <b style="color:var(--ink)">Período:</b> ${esc(chartRangeLabel())} · ${nRuns} recorridos<br>
+      <b style="color:var(--ink)">El informe incluye por equipo:</b> todas sus métricas numéricas, gráficas separadas (entrada/salida/kW/°C…), resumen estadístico y hallazgos fuera de rango.
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">Equipos a incluir (toca para seleccionar uno o varios):</span>
+      <span class="pill cap" id="repCount">1 equipo seleccionado</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-gho btn-sm" onclick="repSelAll(true)">Todos</button>
+      <button class="btn btn-gho btn-sm" onclick="repSelAll(false)">Ninguno</button>
+    </div>
+    <div class="opts" style="margin-bottom:12px">
+      ${teams.map((s,i)=>`<button class="opt ${repTeams.includes(s)?'on':''}" id="req_${i}" onclick="togRepEq(${i})">${esc(s)}</button>`).join('')}
+    </div>
+    <div class="fld"><label>Título del informe</label>
+      <input id="repTitle" value="Informe de análisis · ${esc(locFilter==='ALL'?'CAP + CPP':locFilter)}"></div>
+    <div class="fld"><label>Comentarios finales (conclusiones, recomendaciones, seguimiento…)</label>
+      <textarea id="repComments" rows="5" placeholder="Ej: Las corrientes de entrada se mantienen estables. Se recomienda monitorear la Fase B…"></textarea></div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-gho" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-ok" onclick="genTeamReport()">📄 Generar PDF</button>
+  </div>`);
+}
+async function genTeamReport(){
+  const title=($('#repTitle')?.value.trim())||'Informe de análisis';
+  const comments=($('#repComments')?.value.trim())||'';
+  if(!repTeams.length){toast('Selecciona al menos un equipo','bad');return;}
+  const numQs=allNumQs().filter(q=>repTeams.includes(q.section));
+  if(!numQs.length){toast('Los equipos seleccionados no tienen métricas numéricas','bad');return;}
+  const secs=repTeams.filter(s=>numQs.some(q=>q.section===s));
+  closeModal();
+  toast(`⏳ Generando informe (${secs.length} equipo${secs.length>1?'s':''})…`);
+  await new Promise(r=>setTimeout(r,150));
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const PW=210, PH=()=>doc.internal.pageSize.getHeight();
+  const ML=14, CW=182;
+  const PRI=[14,95,216], PRI2=[10,74,168], INK=[22,35,58], MUT=[92,107,130],
+        BAD=[209,60,60], LIGHT=[242,245,249], LINE=[227,232,239],
+        OKC=[23,143,95], OKBG=[228,245,236], OKLN=[191,230,210], SKY=[125,193,255];
+  const safe=s=>String(s).replace(/[^a-z0-9]+/gi,'_');
+
+  doc.setFillColor(...PRI); doc.rect(0,0,PW,40,'F');
+  doc.setFillColor(...SKY); doc.rect(0,40,PW,1.8,'F');
+  doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(17);
+  doc.text(title,ML,16);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(205,224,248);
+  doc.text('MantCAP · Gestión de mantenimiento CAP / CPP',ML,23.5);
+  doc.text(`Generado: ${fmtDT(new Date().toISOString())}   ·   Por: ${SES.name}`,ML,31);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(255);
+  doc.text('MantCAP',PW-ML,16,{align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(205,224,248);
+  doc.text(APP_VERSION,PW-ML,22,{align:'right'});
+
+  let y=52;
+  doc.setFillColor(...LIGHT); doc.setDrawColor(...LINE); doc.setLineWidth(0.3);
+  doc.roundedRect(ML,y,CW,24,2.5,2.5,'FD');
+  const totalRuns=DB.runs.filter(r=>(locFilter==='ALL'||r.loc===locFilter)&&inChartRange(r)).length;
+  const meta=[
+    ['UBICACIÓN',locFilter==='ALL'?'CAP + CPP':locFilter],
+    ['PERÍODO ANALIZADO',chartRangeLabel()],
+    ['EQUIPOS INCLUIDOS',secs.length===1?secs[0]:`${secs.length} equipos`],
+    ['RECORRIDOS DEL PERÍODO',String(totalRuns)]
+  ];
+  meta.forEach(([k,v],i)=>{
+    const cx=ML+7+(i%2)*(CW/2-2), cy=y+(i<2?7.5:17);
+    doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...MUT);
+    doc.text(k,cx,cy);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...INK);
+    doc.text(String(v),cx,cy+5);
+  });
+  y+=34;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...PRI);
+  doc.text('Resumen general',ML,y); doc.setTextColor(...INK); y+=4;
+  const sumRows=secs.map(sec=>{
+    const eqQs=numQs.filter(q=>q.section===sec);
+    return [sec,eqQs[0].loc,String(eqQs.length),String(oorRowsForQs(eqQs).length)];
+  });
+  doc.autoTable({
+    head:[['Equipo','Ubicación','Métricas','Hallazgos f. de rango']],
+    body:sumRows,startY:y,
+    styles:{fontSize:8.5,cellPadding:2},
+    headStyles:{fillColor:[230,238,250],textColor:PRI2},
+    alternateRowStyles:{fillColor:[250,252,254]},
+    columnStyles:{1:{cellWidth:26,halign:'center'},2:{cellWidth:20,halign:'center'},3:{cellWidth:32,halign:'center'}},
+    margin:{left:ML,right:ML}});
+  y=doc.lastAutoTable.finalY+8;
+
+  for(const sec of secs){
+    const eqQs=numQs.filter(q=>q.section===sec);
+    const statRows=eqQs.map(q=>{
+      const s=chartStats(q); if(!s) return null;
+      return [shortName(q),String(s.n),s.avg.toFixed(2),String(s.mn),String(s.mx),s.last+(q.unit?' '+q.unit:''),s.oor?`${s.oor} (${s.pct}%)`:'0'];
+    }).filter(Boolean);
+    const groups=groupByUnit(eqQs);
+    const imgs=[];
+    for(const [unit,gq] of groups){
+      const {img,runs}=await renderGroupImg(gq);
+      if(img) imgs.push({unit,img,nS:gq.length,nR:runs.length});
+    }
+    const oor=oorRowsForQs(eqQs);
+
+    if(y>PH()-46){doc.addPage();y=14;}
+    doc.setFillColor(...PRI);
+    doc.roundedRect(ML,y,CW,10.5,1.5,1.5,'F');
+    doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(11.5);
+    doc.text(`Equipo: ${sec}`,ML+4,y+7);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(214,228,250);
+    doc.text(`${eqQs.length} métricas · ${imgs.length} gráficas · ${oor.length} hallazgos`,ML+CW-4,y+7,{align:'right'});
+    doc.setTextColor(...INK);
+    y+=16;
+
+    if(statRows.length){
+      doc.autoTable({
+        head:[['Métrica','Registros','Promedio','Mín','Máx','Último valor','Fuera de rango']],
+        body:statRows,startY:y,
+        styles:{fontSize:7.5,cellPadding:1.8},
+        headStyles:{fillColor:[230,238,250],textColor:PRI2},
+        alternateRowStyles:{fillColor:[250,252,254]},
+        columnStyles:{0:{cellWidth:56},6:{cellWidth:22,halign:'center'}},
+        margin:{left:ML,right:ML}});
+      y=doc.lastAutoTable.finalY+6;
+    }
+    for(const it of imgs){
+      const w=CW,h=w*(460/1000);
+      if(y+h+13>PH()-14){doc.addPage();y=14;}
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...PRI2);
+      doc.text(`Comparativa · ${it.unit}`,ML,y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MUT);
+      doc.text(`(${it.nS} series · ${it.nR} recorridos)`,ML+CW,y,{align:'right'});
+      doc.setTextColor(...INK);
+      doc.addImage(it.img,'PNG',ML,y+2.5,w,h);
+      doc.setDrawColor(...LINE); doc.setLineWidth(0.3);
+      doc.rect(ML,y+2.5,w,h);
+      y+=h+11;
+    }
+    if(oor.length){
+      if(y>PH()-50){doc.addPage();y=14;}
+      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...BAD);
+      doc.text(`Hallazgos fuera de rango (${oor.length})`,ML,y); doc.setTextColor(...INK); y+=3;
+      doc.autoTable({
+        head:[['Fecha','Medición','Valor','Esperado','Avería / Nota']],
+        body:oor,startY:y,
+        styles:{fontSize:7.5,cellPadding:1.8},headStyles:{fillColor:BAD},
+        alternateRowStyles:{fillColor:[253,246,246]},
+        columnStyles:{1:{cellWidth:52},4:{cellWidth:46}},margin:{left:ML,right:ML}});
+      y=doc.lastAutoTable.finalY+8;
+    }else{
+      if(y>PH()-20){doc.addPage();y=14;}
+      doc.setFillColor(...OKBG); doc.setDrawColor(...OKLN); doc.setLineWidth(0.3);
+      doc.roundedRect(ML,y,CW,8,1.5,1.5,'FD');
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...OKC);
+      doc.text('Sin hallazgos fuera de rango en el período analizado',ML+4,y+5.4);
+      doc.setTextColor(...INK); y+=13;
+    }
+    y+=2;
+  }
+
+  if(comments){
+    if(y>PH()-45){doc.addPage();y=14;}
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...PRI);
+    doc.text('Comentarios finales',ML,y); doc.setTextColor(...INK); y+=5.5;
+    const lines=doc.splitTextToSize(comments,CW-12);
+    doc.setFillColor(...LIGHT); doc.setDrawColor(...LINE); doc.setLineWidth(0.3);
+    doc.roundedRect(ML,y,CW,lines.length*5+8,2.5,2.5,'FD');
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...INK);
+    doc.text(lines,ML+6,y+6.5);
+  }
+
+  const tot=doc.internal.getNumberOfPages();
+  for(let p=1;p<=tot;p++){
+    doc.setPage(p);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...MUT);
+    doc.setDrawColor(...LINE); doc.setLineWidth(0.2);
+    doc.line(ML,PH()-11,PW-ML,PH()-11);
+    doc.text(`MantCAP ${APP_VERSION} · Informe de análisis`,ML,PH()-7);
+    doc.text(`Página ${p} de ${tot}`,PW-ML,PH()-7,{align:'right'});
+  }
+
+  const tag=secs.length===1?safe(secs[0]):`${secs.length}_EQUIPOS`;
+  doc.save(`informe_${tag}_${safe(locFilter)}_${chFrom||'inicio'}_${chTo||'hoy'}.pdf`);
+  toast(`📄 Informe generado · ${secs.length} equipo${secs.length>1?'s':''}`,'ok');
+}
+
+/* ================== ADMIN · PREGUNTAS ================== */
+let qSearch='';
+function renderQuestions(){
+  const all=DB.questions.filter(q=>locFilter==='ALL'||q.loc===locFilter);
+  const list=all.filter(q=>(q.text+' '+q.section).toLowerCase().includes(qSearch.toLowerCase()));
+  const groups=[...new Set(list.map(q=>q.section))];
+  $('#content').innerHTML=`${locBar(`<input id="qSearch" placeholder="Buscar pregunta…" value="${esc(qSearch)}" oninput="qSearch=this.value;renderQuestions()">`)}
+  <div class="card"><div class="hd"><h3>Preguntas (${list.length})</h3>
+    <span class="sp"><button class="btn btn-pri btn-sm" onclick="editQModal()">+ Nueva pregunta</button></span></div>
+  <div style="padding:0 0 8px">
+  ${groups.map(s=>`
+    <div style="padding:10px 16px;background:#f8fafc;font-weight:700;font-size:12.5px;border-bottom:1px solid var(--line);border-top:1px solid var(--line)">${esc(s)}</div>
+    <table class="tb">${list.filter(q=>q.section===s).map(q=>`<tr>
+      <td>${esc(q.text)}${q.active?'':' <span class="pill mut">inactiva</span>'}<br>
+        <span style="font-size:11.5px;color:var(--mut)">${q.type}${q.unit?' · '+esc(q.unit):''}${rangeLabel(q)?' · '+rangeLabel(q):''}</span></td>
+      <td>${locBadge(q.loc)}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-gho btn-sm" onclick="editQModal('${q.id}')">Editar</button>
+        <button class="btn ${q.active?'btn-gho':'btn-ok'} btn-sm" onclick="toggleQ('${q.id}')">${q.active?'Desactivar':'Activar'}</button>
+      </td></tr>`).join('')}</table>`).join('')||'<div class="empty">Sin resultados</div>'}
+  </div></div>`;
+  const inp=$('#qSearch'); if(inp&&qSearch){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
+}
+function toggleQ(id){const q=getQ(id);q.active=!q.active;saveDB();toast(q.active?'Pregunta activada':'Pregunta desactivada','ok');renderQuestions();}
+function editQModal(id){
+  const q=id?getQ(id):null;
+  modal(`<div class="mh"><h3>${q?'Editar pregunta':'Nueva pregunta'}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mb">
+    <div class="fld"><label>Ubicación</label><select id="eqLoc"><option ${q&&q.loc==='CAP'?'selected':''}>CAP</option><option ${q&&q.loc==='CPP'?'selected':''}>CPP</option></select></div>
+    <div class="fld"><label>Sección</label><input id="eqSec" value="${esc(q?.section||'')}"></div>
+    <div class="fld"><label>Texto de la pregunta</label><input id="eqTxt" value="${esc(q?.text||'')}"></div>
+    <div class="grid g3">
+      <div class="fld"><label>Tipo</label><select id="eqType" ${q?'disabled':''}>${['number','select','boolean','multi','text'].map(t=>`<option ${q&&q.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="fld"><label>Unidad</label><input id="eqUnit" value="${esc(q?.unit||'')}"></div>
+      <div class="fld"><label>Mín / Máx (opcional)</label><div style="display:flex;gap:6px"><input id="eqMin" type="number" step="any" value="${q?.min??''}"><input id="eqMax" type="number" step="any" value="${q?.max??''}"></div></div>
+    </div>
+  </div>
+  <div class="mf"><button class="btn btn-gho" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveQ('${id||''}')">Guardar</button></div>`);
+}
+function saveQ(id){
+  const text=$('#eqTxt').value.trim();
+  if(!text){toast('Escribe el texto de la pregunta','bad');return;}
+  const min=$('#eqMin').value===''?null:+$('#eqMin').value, max=$('#eqMax').value===''?null:+$('#eqMax').value;
+  if(id){
+    const q=getQ(id);
+    Object.assign(q,{loc:$('#eqLoc').value,section:$('#eqSec').value.trim()||q.section,text,unit:$('#eqUnit').value.trim(),min,max});
+  }else{
+    const loc=$('#eqLoc').value;
+    DB.questions.push({id:loc.toLowerCase()+(DB.qseq++),loc,section:$('#eqSec').value.trim()||'General',text,
+      type:$('#eqType').value,unit:$('#eqUnit').value.trim(),min,max,required:true,options:[],ph:'',hm:'',active:true});
+  }
+  saveDB();closeModal();toast('Pregunta guardada','ok');renderQuestions();
+}
+
+/* ================== ADMIN · HISTORIAL (con filtro de fechas) ================== */
+let histSearch='';
+let histFrom='', histTo='', histQuick='all';
+function histQuickRange(k){
+  histQuick=k;
+  const t=new Date(); const iso=d=>d.toISOString().slice(0,10);
+  if(k==='all'){histFrom='';histTo='';}
+  else if(k==='today'){histFrom=iso(t);histTo=iso(t);}
+  else if(k==='7'){const d=new Date();d.setDate(d.getDate()-6);histFrom=iso(d);histTo='';}
+  else if(k==='30'){const d=new Date();d.setDate(d.getDate()-29);histFrom=iso(d);histTo='';}
+  else if(k==='month'){histFrom=t.toISOString().slice(0,8)+'01';histTo='';}
+  renderHistory();
+}
+function renderHistory(){
+  const hqc=k=>`<button class="chip ${histQuick===k?'on':''}" onclick="histQuickRange('${k}')">${{all:'Todo',today:'Hoy','7':'7 días','30':'30 días',month:'Este mes'}[k]}</button>`;
+  const histLabel=(!histFrom&&!histTo)?'Todo el historial':`${histFrom?fmtD(histFrom):'inicio'} → ${histTo?fmtD(histTo):'hoy'}`;
+  const runs=runsFor()
+    .filter(r=>(!histFrom||r.date.slice(0,10)>=histFrom)&&(!histTo||r.date.slice(0,10)<=histTo))
+    .filter(r=>(r.techName+' '+r.ticket).toLowerCase().includes(histSearch.toLowerCase()));
+  $('#content').innerHTML=`${locBar(`<input id="hSearch" placeholder="Buscar técnico o ticket…" value="${esc(histSearch)}" oninput="histSearch=this.value;renderHistory()">`)}
+  <div class="toolbar">
+    <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px">Fechas:</span>
+    <input type="date" value="${histFrom}" onchange="histFrom=this.value;histQuick='custom';renderHistory()">
+    <span style="color:var(--mut)">→</span>
+    <input type="date" value="${histTo}" onchange="histTo=this.value;histQuick='custom';renderHistory()">
+    ${hqc('all')}${hqc('today')}${hqc('7')}${hqc('30')}${hqc('month')}
+    <span class="pill mut" style="margin-left:4px">📅 ${esc(histLabel)}</span>
+  </div>
+  <div class="card"><div class="hd"><h3>Recorridos (${runs.length})</h3></div>
+  ${runs.length?`<table class="tb"><tr><th>Fecha</th><th>Sitio</th><th>Técnico</th><th>Ticket</th><th>Duración</th><th>Alertas</th><th></th></tr>
+  ${runs.map(r=>`<tr>
+    <td>${fmtDT(r.date)}</td><td>${locBadge(r.loc)}</td><td>${esc(r.techName)}</td><td>${esc(r.ticket)}</td>
+    <td style="white-space:nowrap">${fmtDur(runDur(r))}</td>
+    <td>${r.outOfRange.length?`<span class="pill bad">${r.outOfRange.length}</span>`:'<span class="pill ok">0</span>'}</td>
+    <td style="text-align:right;white-space:nowrap">
+      <button class="btn btn-gho btn-sm" onclick="openRunModal('${r.id}')">Ver</button>
+      <button class="btn btn-gho btn-sm" onclick="exportRunPDF('${r.id}')">PDF</button>
+      <button class="btn btn-bad btn-sm" onclick="delRun('${r.id}')">Eliminar</button>
+    </td></tr>`).join('')}</table>`:'<div class="empty">Sin recorridos en el filtro seleccionado</div>'}
+  </div>`;
+  const inp=$('#hSearch'); if(inp&&histSearch){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
+}
+function delRun(id){
+  confirmModal('<p>¿Eliminar este recorrido definitivamente? Esta acción no se puede deshacer.</p>',
+    ()=>{DB.runs=DB.runs.filter(r=>r.id!==id);saveDB();updateBadges();toast('Recorrido eliminado','ok');renderHistory();},'Eliminar');
+}
+
+/* ================== DETALLE DE RECORRIDO / PDF ================== */
+function openRunModal(id){
+  const r=DB.runs.find(x=>x.id===id); if(!r) return;
+  const qs=DB.questions.filter(q=>r.answers&&r.answers[q.id]!=null&&r.answers[q.id]!=='');
+  const secs=[...new Set(qs.map(q=>q.section))];
+  const oorMap=new Map((r.outOfRange||[]).map(a=>[a.qid,a]));
+  modal(`<div class="mh"><h3>Recorrido ${fmtDT(r.date)} ${locBadge(r.loc)}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mb">
+    <p style="font-size:13px;color:var(--mut);margin-bottom:12px">
+      Técnico: <b style="color:var(--ink)">${esc(r.techName)}</b> · Ticket: <b style="color:var(--ink)">${esc(r.ticket)}</b> ·
+      Duración: <b style="color:var(--ink)">⏱ ${fmtDur(runDur(r))}</b>
+      ${r.startedAt?`<br>Inició: ${fmtDT(r.startedAt)}${r.endedAt?` · Finalizó: ${fmtDT(r.endedAt)}`:''}`:''}
+    </p>
+    ${secs.map(s=>`<div class="sec" style="margin-bottom:10px"><div class="st">${esc(s)}</div>
+      <table class="tb">${qs.filter(q=>q.section===s).map(q=>{
+        const a=oorMap.get(q.id);
+        let rep='';
+        if(a&&(a.confirmed||a.note)){
+          rep=`<div style="margin-top:6px;font-size:11.5px">
+            ${a.confirmed?'<span class="pill bad" style="font-size:10px">Avería reportada</span> ':''}
+            ${a.note?`<div style="color:var(--mut);margin-top:3px">📝 ${esc(a.note)}</div>`:''}</div>`;
+        }
+        return `<tr><td>${esc(q.text)}${a?`<br><span style="font-size:11px;color:var(--bad)">Esperado: ${esc(a.expected)}</span>`:''}${rep}</td>
+        <td style="text-align:right;white-space:nowrap">${a?'<span class="pill bad">Fuera de rango</span> ':''}<b>${esc(fmtVal(q,r.answers[q.id]))}</b></td></tr>`}).join('')}</table></div>`).join('')||'<div class="empty">Sin respuestas registradas</div>'}
+  </div>
+  <div class="mf"><button class="btn btn-gho" onclick="closeModal()">Cerrar</button><button class="btn btn-pri" onclick="exportRunPDF('${r.id}')">Exportar PDF</button></div>`,true);
+}
+function exportRunPDF(id){
+  const r=DB.runs.find(x=>x.id===id); if(!r) return;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  doc.setFontSize(16); doc.text('MantCAP · Reporte de recorrido',14,16);
+  doc.setFontSize(10);
+  doc.text(`Ubicación: ${r.loc}    Fecha: ${fmtDT(r.date)}`,14,24);
+  doc.text(`Técnico: ${r.techName}    Ticket: ${r.ticket}`,14,29);
+  doc.text(`Duración del recorrido: ${fmtDur(runDur(r))}`,14,34);
+  const qs=DB.questions.filter(q=>r.answers&&r.answers[q.id]!=null&&r.answers[q.id]!=='');
+  const oorMap=new Map((r.outOfRange||[]).map(a=>[a.qid,a]));
+  const rows=qs.map(q=>{const a=oorMap.get(q.id);
+    const rep=a?[(a.confirmed?'Avería reportada.':''),(a.note||'')].filter(Boolean).join(' '):'';
+    return [q.section,q.text,fmtVal(q,r.answers[q.id]),a?`Fuera de rango (${a.expected})`:'OK',rep];});
+  doc.autoTable({head:[['Sección','Medición','Valor','Estado','Avería / Reporte']],body:rows,startY:40,
+    styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[14,95,216]},
+    columnStyles:{0:{cellWidth:26},1:{cellWidth:62},4:{cellWidth:36}},didParseCell:d=>{
+      if(d.section===1&&String(d.cell.raw).startsWith('Fuera')) d.cell.styles.textColor=[209,60,60];}});
+  doc.save(`recorrido_${r.loc}_${r.date.slice(0,10)}.pdf`);
+  toast('PDF generado','ok');
+}
+
+/* ================== ADMIN · ALERTAS ================== */
+let alertView='pen';
+function renderAlerts(){
+  const list=alertView==='pen'?pendAlerts():alertView==='rev'?revAlerts():alertsFor();
+  const qc=(k,l,n)=>`<button class="chip ${alertView===k?'on':''}" onclick="alertView='${k}';renderAlerts()">${l} (${n})</button>`;
+  $('#content').innerHTML=`${locBar()}
+  <div class="toolbar">
+    ${qc('pen','Pendientes',pendAlerts().length)}
+    ${qc('rev','Revisadas',revAlerts().length)}
+    ${qc('all','Todas',alertsFor().length)}
+  </div>
+  <div class="card">
+  ${list.length?`<table class="tb"><tr><th>Fecha</th><th>Sitio</th><th>Medición</th><th>Valor</th><th>Esperado</th><th>Avería reportada</th>${alertView!=='pen'?'<th>Solución / Estado</th>':''}<th></th></tr>
+  ${list.map(a=>`<tr>
+    <td>${fmtD(a.date)}</td><td>${locBadge(a.loc)}</td>
+    <td><b>${esc(a.section)}</b><br><span style="font-size:12px">${esc(a.qtext)}</span></td>
+    <td><span class="pill bad">${esc(a.value)}</span></td>
+    <td style="font-size:12px">${esc(a.expected)}</td>
+    <td>${a.confirmed?'<span class="pill ok">Sí</span>':'<span class="pill pen">No</span>'}${a.note?`<br><span style="font-size:11px;color:var(--mut)">📝 ${esc(a.note)}</span>`:''}</td>
+    ${alertView!=='pen'?`<td style="font-size:12px;max-width:220px">${a.reviewNote?esc(a.reviewNote):'<span style="color:var(--mut)">—</span>'}</td>`:''}
+    <td style="text-align:right;white-space:nowrap">
+      ${a.reviewed
+        ?`<button class="btn btn-gho btn-sm" onclick="reviewAlert('${a.runId}','${a.qid}')">Editar nota</button>
+          <button class="btn btn-gho btn-sm" onclick="reopenAlert('${a.runId}','${a.qid}')">Reabrir</button>`
+        :`<button class="btn btn-ok btn-sm" onclick="reviewAlert('${a.runId}','${a.qid}')">Revisada</button>`}
+    </td></tr>`).join('')}</table>`:'<div class="empty">'+(alertView==='pen'?'Sin alertas pendientes 🎉':alertView==='rev'?'Aún no hay alertas revisadas':'Sin alertas por aquí 🎉')+'</div>'}
+  </div>`;
+}
+function findAlert(runId,qid){const r=DB.runs.find(x=>x.id===runId);return {r,a:r?.outOfRange?.find(x=>x.qid===qid)};}
+function reviewAlert(runId,qid){
+  const {a}=findAlert(runId,qid); if(!a) return;
+  modal(`<div class="mh"><h3>${a.reviewed?'Editar nota de revisión':'Marcar como revisada'}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mb">
+    <p style="font-size:12.5px;color:var(--mut);margin-bottom:10px"><b style="color:var(--ink)">${esc(a.qtext)}</b><br>Valor medido: <b style="color:var(--bad)">${esc(a.value)}</b> · Esperado: ${esc(a.expected)}</p>
+    <div class="fld"><label>¿Cómo se solucionó o en qué estado quedó? *</label>
+      <textarea id="revNote" rows="4" placeholder="Ej: Se cambió el ventilador del gabinete, equipo operando normal. / Pendiente repuesto, se monitorea a diario…">${esc(a.reviewNote||'')}</textarea></div>
+  </div>
+  <div class="mf"><button class="btn btn-gho" onclick="closeModal()">Cancelar</button><button class="btn btn-ok" onclick="saveReview('${runId}','${qid}')">Guardar revisión</button></div>`);
+}
+function saveReview(runId,qid){
+  const {a}=findAlert(runId,qid); if(!a) return;
+  const note=$('#revNote').value.trim();
+  if(!note){toast('Escribe cómo se solucionó o el estado final','bad');return;}
+  a.reviewNote=note; a.reviewed=true; a.reviewedAt=new Date().toISOString();
+  saveDB();updateBadges();closeModal();
+  toast('Alerta marcada como revisada ✓','ok');renderAlerts();
+}
+function reopenAlert(runId,qid){
+  confirmModal('<p>La alerta volverá a la lista de <b>pendientes</b>. La nota de solución se conservará por si la vuelves a revisar. ¿Continuar?</p>',
+    ()=>{const {a}=findAlert(runId,qid);if(!a)return;a.reviewed=false;saveDB();updateBadges();toast('Alerta reabierta','ok');renderAlerts();},'Reabrir');
+}
+
+/* ================== ADMIN · USUARIOS ================== */
+function renderUsers(){
+  const techs=DB.users.filter(u=>u.role==='tech');
+  $('#content').innerHTML=`${locBar()}
+  <div class="card">
+    <div class="hd"><h3>Usuarios técnicos (${techs.length})</h3>
+      <span class="sp"><button class="btn btn-pri btn-sm" onclick="userModal()">+ Nuevo técnico</button></span></div>
+    <div style="max-height:520px;overflow:auto">
+    ${techs.length?`<table class="tb">
+      <tr><th>Nombre</th><th>Usuario</th><th>Creado</th><th>Recorridos</th><th>Estado</th><th></th></tr>
+      ${techs.map(u=>{
+        const runs=DB.runs.filter(r=>r.techName===u.name).length;
+        return `<tr${u.active===false?' style="opacity:.5"':''}>
+          <td><b>${esc(u.name)}</b></td>
+          <td style="color:var(--mut)">${esc(u.u)}</td>
+          <td style="white-space:nowrap;color:var(--mut)">${fmtD(u.createdAt)}</td>
+          <td>${runs}</td>
+          <td>${u.active===false?'<span class="pill mut">Inactivo</span>':'<span class="pill ok">Activo</span>'}</td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-gho btn-sm" onclick="userModal('${esc(u.u)}')">Editar</button>
+            <button class="btn ${u.active===false?'btn-ok':'btn-gho'} btn-sm" onclick="toggleUser('${esc(u.u)}')">${u.active===false?'Activar':'Desactivar'}</button>
+            <button class="btn btn-bad btn-sm" onclick="delUser('${esc(u.u)}')">Eliminar</button>
+          </td></tr>`;
+      }).join('')}</table>`:'<div class="empty">No hay técnicos registrados</div>'}
+    </div>
+  </div>
+  <p style="font-size:12px;color:var(--mut);margin-top:10px">💡 Los técnicos <b>inactivos</b> no pueden iniciar sesión. Un técnico con recorridos registrados no puede eliminarse (desactívalo en su lugar).</p>`;
+}
+function userModal(uu){
+  const u=uu?DB.users.find(x=>x.u===uu&&x.role==='tech'):null;
+  modal(`<div class="mh"><h3>${u?'Editar técnico':'Nuevo técnico'}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mb">
+    <div class="fld"><label>Nombre completo *</label><input id="usName" value="${esc(u?.name||'')}" placeholder="Ej: María Fernández Solano"></div>
+    <div class="fld"><label>Nombre de usuario *</label><input id="usUser" value="${esc(u?.u||'')}" placeholder="Se genera del nombre; puedes editarlo"></div>
+    ${u?'':`<button class="btn btn-gho btn-sm" style="margin-bottom:12px" onclick="$('#usUser').value=userFromName($('#usName').value)">↻ Generar del nombre</button>`}
+    <div class="fld"><label>PIN (4+ caracteres) *</label><input id="usPin" type="password" value="${u?u.p:''}" placeholder="Mínimo 4 caracteres"></div>
+    <div class="fld"><label>Confirmar PIN *</label><input id="usPin2" type="password" value="${u?u.p:''}"></div>
+  </div>
+  <div class="mf"><button class="btn btn-gho" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveUser('${esc(uu||'')}')">Guardar</button></div>`);
+  setTimeout(()=>{const i=$('#usName');if(i)i.focus();},80);
+}
+function saveUser(origU){
+  const name=$('#usName').value.trim();
+  const uu=$('#usUser').value.trim().toLowerCase();
+  const p1=$('#usPin').value, p2=$('#usPin2').value;
+  if(!name){toast('Escribe el nombre completo','bad');return;}
+  if(!uu){toast('Escribe el nombre de usuario','bad');return;}
+  if(DB.users.some(x=>x.u===uu&&x.u!==origU)){toast('Ese nombre de usuario ya existe','bad');return;}
+  if(p1.length<4){toast('El PIN debe tener al menos 4 caracteres','bad');return;}
+  if(p1!==p2){toast('Los PIN no coinciden','bad');return;}
+  if(origU){
+    const u=DB.users.find(x=>x.u===origU&&x.role==='tech');
+    if(!u){toast('Usuario no encontrado','bad');return;}
+    const oldName=u.name;
+    u.name=name; u.u=uu; u.p=p1;
+    if(oldName!==name){
+      DB.runs.forEach(r=>{ if(r.techName===oldName) r.techName=name; });
+      toast('Técnico actualizado (recorridos renombrados)','ok');
+    }else{
+      toast('Técnico actualizado','ok');
+    }
+  }else{
+    DB.users.push({u:uu,p:p1,role:'tech',name,active:true,createdAt:new Date().toISOString()});
+    toast('Técnico creado ✓','ok');
+  }
+  saveDB();closeModal();renderUsers();
+}
+function toggleUser(uu){
+  const u=DB.users.find(x=>x.u===uu&&x.role==='tech'); if(!u) return;
+  u.active=(u.active===false)?true:false;
+  saveDB();
+  toast(u.active?`${u.name} activado`:`${u.name} desactivado (no podrá iniciar sesión)`,u.active?'ok':'');
+  renderUsers();
+}
+function delUser(uu){
+  const u=DB.users.find(x=>x.u===uu&&x.role==='tech'); if(!u) return;
+  const runs=DB.runs.filter(r=>r.techName===u.name).length;
+  if(runs>0){
+    toast(`No se puede eliminar: ${u.name} tiene ${runs} recorrido(s). Desactívalo en su lugar.`,'bad');
+    return;
+  }
+  confirmModal(`<p>¿Eliminar al técnico <b>${esc(u.name)}</b> definitivamente? Esta acción no se puede deshacer.</p>`,
+    ()=>{DB.users=DB.users.filter(x=>!(x.u===uu&&x.role==='tech'));saveDB();toast('Técnico eliminado','ok');renderUsers();},'Eliminar');
+}
+
+/* ================== ADMIN · AJUSTES ================== */
+function renderSettings(){
+  const fbOK=window.FirebaseSync&&FirebaseSync.isConfigured();
+  $('#content').innerHTML=`
+  <div class="grid g2">
+    <div class="card"><div class="hd"><h3>Usuarios y acceso</h3></div><div class="bd">
+      <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Crea, edita y administra los técnicos que pueden hacer recorridos.</p>
+      <button class="btn btn-pri" onclick="showTab('users')">👥 Administrar usuarios</button>
+    </div></div>
+    <div class="card"><div class="hd"><h3>Datos</h3></div><div class="bd">
+      <p style="font-size:13px;color:var(--mut);margin-bottom:12px">${DB.questions.length} preguntas · ${DB.runs.length} recorridos · ${APP_VERSION}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-gho" onclick="exportDB()">Exportar respaldo (JSON)</button>
+        <button class="btn btn-gho" onclick="$('#impFile').click()">Importar respaldo</button>
+        <input type="file" id="impFile" class="hidden" accept=".json" onchange="importDB(this)">
+      </div>
+    </div></div>
+    <div class="card"><div class="hd"><h3>Sincronización en la nube ☁️</h3></div><div class="bd">
+      <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Estado: <b style="color:${fbOK?'var(--ok)':'var(--warn)'}">${fbOK?'Configurado — los datos se sincronizan con Firebase Firestore':'No configurado — trabajando solo con este dispositivo'}</b></p>
+      <p style="font-size:12.5px;color:var(--mut)">Sin internet la app sigue funcionando normalmente y sincroniza al reconectar.</p>
+    </div></div>
+    <div class="card"><div class="hd"><h3>Zona de riesgo</h3></div><div class="bd">
+      <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Restablece las preguntas y regenera datos demo. Se pierden los recorridos guardados.</p>
+      <button class="btn btn-bad" onclick="resetDB()">Restablecer datos demo</button>
+    </div></div>
+    <div class="card" style="grid-column:1/-1"><div class="hd"><h3>Acerca de</h3></div><div class="bd" style="font-size:13px;color:var(--mut);line-height:1.8">
+      <b style="color:var(--ink)">MantCAP ${APP_VERSION}</b> · Gestión de mantenimiento CAP & CPP<br>
+      <b style="color:var(--ink)">v2.10.1:</b> PWA instalable (manifest + service worker + iconos).<br>
+      <b style="color:var(--ink)">v2.10:</b> métricas en tarjetas agrupadas; eliminado "Fijar en Resumen".<br>
+      <b style="color:var(--ink)">v2.9:</b> historial con filtro de fechas.<br>
+      <b style="color:var(--ink)">v2.8:</b> gestión de usuarios técnicos.<br>
+      <b style="color:var(--ink)">v2.7:</b> CPP con rangos oficiales actualizados.<br>
+      <b style="color:var(--ink)">v2.5–2.6:</b> Firebase, informes, gráficas comparativas, cronómetro pausable.<br>
+      <b style="color:var(--ink)">v1.4–1.9:</b> UPS entrada/salida, acordeón, averías, revisión.
+    </div></div>
+  </div>`;
+}
+function exportDB(){
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mantcap_respaldo.json';a.click();
+  toast('Respaldo exportado','ok');
+}
+function importDB(inp){
+  const f=inp.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.questions||!d.runs)throw 0;DB=d;if(!DB.settings)DB.settings={pinned:[]};if(!DB.users)DB.users=[];saveDB();updateBadges();toast('Respaldo importado','ok');showTab('set');}catch(e){toast('Archivo inválido','bad');}};
+  rd.readAsText(f);
+}
+function resetDB(){
+  confirmModal('<p>Se restablecerán todas las preguntas y se regenerarán los recorridos demo. ¿Continuar?</p>',
+    ()=>{seedDB();locFilter='ALL';chartGroup='';chartSelIds=[];dashFrom='';dashTo='';dashQuick='all';chFrom='';chTo='';chQuick='all';toast('Datos restablecidos','ok');showTab('dash');},'Restablecer');
+}
+
+/* ================== TÉCNICO · FORMULARIO (cronómetro pausable) ================== */
+let formState=null, secNames=[];
+function renderTechForm(){
+  if(SES.role!=='tech'){$('#content').innerHTML='<div class="empty">El formulario de recorrido es solo para el perfil Técnico.</div>';return;}
+  formState=loadDraft();
+  if(!formState) formState={loc:'CAP',answers:{},notes:{},conf:{},openSecs:{},started:false,startedAt:null,endedAt:null,ticket:'',accumSec:0,pausedAt:null};
+  if(formState.started===undefined){
+    const hasAns=formState.answers&&Object.keys(formState.answers).length;
+    formState.started=!!hasAns;
+    if(!formState.started){formState.startedAt=null;formState.ticket='';}
+    else if(!formState.startedAt) formState.startedAt=new Date().toISOString();
+  }
+  if(formState.accumSec==null) formState.accumSec=0;
+  if(formState.pausedAt===undefined) formState.pausedAt=null;
+  formState.openSecs=formState.openSecs||{};
+  drawForm();
+}
+function loadDraft(){
+  try{const d=JSON.parse(localStorage.getItem(DKEY));if(d&&d.tech===SES.name)return d;}catch(e){}
+  return null;
+}
+function saveDraft(){localStorage.setItem(DKEY,JSON.stringify({...formState,tech:SES.name}));}
+function discardDraft(){clearTimer();localStorage.removeItem(DKEY);formState=null;renderTechForm();}
+function setStartLoc(l){formState.loc=l;saveDraft();drawForm();}
+function switchLoc(l){
+  if(Object.keys(formState.answers).length){
+    clearTimer();
+    confirmModal('<p>Cambiar de sitio descartará las respuestas y el cronómetro del recorrido actual. ¿Continuar?</p>',
+      ()=>{formState={loc:l,answers:{},notes:{},conf:{},openSecs:{},started:false,startedAt:null,endedAt:null,ticket:'',accumSec:0,pausedAt:null};saveDraft();drawForm();},'Cambiar');
+  }else{formState.loc=l;formState.openSecs={};saveDraft();drawForm();}
+}
+function answered(q){const v=formState.answers[q.id];return v!==undefined&&v!==''&&!(Array.isArray(v)&&!v.length);}
+function elapsedSec(){
+  if(!formState) return 0;
+  const acc=formState.accumSec||0;
+  if(!formState.startedAt) return acc;
+  return acc+Math.max(0,Math.floor((Date.now()-new Date(formState.startedAt))/1000));
+}
+function tickTimer(){
+  const el=$('#runTimer');
+  if(el) el.textContent=fmtDur(elapsedSec());
+}
+function updateTimerUI(){
+  if(!formState||!formState.started) return;
+  const chip=$('#timerChip'), bp=$('#btnPause'), br=$('#btnResume');
+  const paused=!!formState.pausedAt;
+  if(chip){chip.classList.toggle('paused',paused);
+    const st=$('#tstat'); if(st)st.textContent=paused?'· en pausa':'';}
+  if(bp)bp.classList.toggle('hidden',paused);
+  if(br)br.classList.toggle('hidden',!paused);
+}
+function timerPause(){
+  if(!formState.started||formState.pausedAt) return;
+  formState.accumSec=elapsedSec();
+  formState.pausedAt=Date.now();
+  formState.startedAt=null;
+  saveDraft();updateTimerUI();tickTimer();
+  toast('⏸ Cronómetro detenido','ok');
+}
+function timerResume(){
+  if(!formState.started||!formState.pausedAt) return;
+  formState.startedAt=new Date().toISOString();
+  formState.pausedAt=null;
+  saveDraft();updateTimerUI();
+  toast('▶ Cronómetro reanudado','ok');
+}
+function timerReset(){
+  confirmModal('<p>El cronómetro volverá a <b>cero</b>. Tus respuestas NO se borran. Si estaba corriendo, seguirá corriendo desde 0. ¿Continuar?</p>',
+    ()=>{
+      formState.accumSec=0;
+      formState.pausedAt=null;
+      formState.startedAt=formState.started?new Date().toISOString():null;
+      saveDraft();updateTimerUI();tickTimer();
+      toast('↺ Cronómetro reiniciado a cero','ok');
+    },'Reiniciar');
+}
+function updateFormProgress(){
+  const req=activeQs(formState.loc).filter(q=>q.required);
+  const done=req.filter(answered).length;
+  const pct=req.length?Math.round(done/req.length*100):0;
+  const bar=document.querySelector('.prog i'); if(bar)bar.style.width=pct+'%';
+  const c1=$('#formCnt'); if(c1)c1.textContent=`${done}/${req.length} requeridas · ${pct}%`;
+  const c2=$('#formStickyCnt'); if(c2)c2.innerHTML=`<b>${done}</b>/${req.length} completadas`;
+  updateSecHeaders();
+}
+function drawForm(){
+  const qs=activeQs(formState.loc);
+  const secs=[...new Set(qs.map(q=>q.section))];
+  secNames=secs;
+  formState.openSecs=formState.openSecs||{};
+  $('#pageTitle').textContent='Recorrido '+formState.loc;
+
+  if(!formState.started){
+    clearTimer();
+    $('#content').innerHTML=`
+    <div class="card" style="max-width:540px;margin:36px auto">
+      <div class="hd"><h3>▶ Iniciar recorrido</h3></div>
+      <div class="bd">
+        <div class="toolbar" style="margin-bottom:14px">
+          <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase">Sitio:</span>
+          <button class="chip ${formState.loc==='CAP'?'on':''}" onclick="setStartLoc('CAP')">CAP</button>
+          <button class="chip ${formState.loc==='CPP'?'on':''}" onclick="setStartLoc('CPP')">CPP</button>
+        </div>
+        <div class="fld"><label>Número de SCTASK * (se llena manualmente)</label>
+          <input id="startTicket" placeholder="Ej: SCTASK1072033" value="${esc(formState.ticket||'')}" onkeydown="if(event.key==='Enter')startFromPanel()"></div>
+        <p style="font-size:12.5px;color:var(--mut);margin-bottom:14px">Al presionar <b>Iniciar recorrido</b> comienza el cronómetro y se habilitan los equipos a revisar. Podrás detenerlo, reanudarlo o reiniciarlo en cualquier momento.</p>
+        <button class="btn btn-ok" style="width:100%;padding:14px;font-size:15px" onclick="startFromPanel()">▶ Iniciar recorrido</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  const req=qs.filter(q=>q.required);
+  const done=req.filter(answered).length;
+  const pct=req.length?Math.round(done/req.length*100):0;
+  $('#content').innerHTML=`
+  <div class="tform-head">
+    <div class="toolbar" style="margin-bottom:0">
+      <span class="timerchip ${formState.pausedAt?'paused':''}" id="timerChip"><i></i>⏱ <span id="runTimer">${fmtDur(elapsedSec())}</span> <span id="tstat">${formState.pausedAt?'· en pausa':''}</span></span>
+      <span class="ticketchip"># ${esc(formState.ticket)}</span>
+      <button class="btn btn-gho btn-sm ${formState.pausedAt?'hidden':''}" id="btnPause" title="Detener el cronómetro" onclick="timerPause()">⏸ Detener</button>
+      <button class="btn btn-ok btn-sm ${formState.pausedAt?'':'hidden'}" id="btnResume" title="Reanudar el cronómetro" onclick="timerResume()">▶ Reanudar</button>
+      <button class="btn btn-gho btn-sm" title="Reiniciar el cronómetro a cero" onclick="timerReset()">↺ Reiniciar</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-gho btn-sm" onclick="toggleAllSecs(true)">Expandir todo</button>
+      <button class="btn btn-gho btn-sm" onclick="toggleAllSecs(false)">Colapsar todo</button>
+      <button class="btn btn-gho btn-sm" onclick="discardDraft()">Descartar borrador</button>
+    </div>
+    <div class="prog"><i style="width:${pct}%"></i></div>
+    <div id="formCnt" style="font-size:11.5px;color:var(--mut);margin-top:4px">${done}/${req.length} requeridas · ${pct}%</div>
+  </div>
+  <p style="font-size:12px;color:var(--mut);margin:2px 2px 10px">👆 Toca un equipo para desplegar los elementos a revisar.</p>
+  ${secs.map((s,i)=>{
+    const open=!!formState.openSecs[s];
+    return `<div class="sec" id="sec_${i}">
+      <div class="st sec-hd" onclick="toggleSec(${i})">
+        <span class="chev ${open?'open':''}" id="chev_${i}">▶</span>
+        <span class="n">${i+1}</span>
+        <span class="title">${esc(s)}</span>
+        <span class="pills" id="secpill_${i}">${secPills(s)}</span>
+      </div>
+      <div class="sec-body ${open?'':'collapsed'}" id="secbody_${i}">
+        ${qs.filter(q=>q.section===s).map(q=>`<div class="q" id="q_${q.id}">${qInner(q)}</div>`).join('')}
+      </div>
+    </div>`;
+  }).join('')}
+  <div class="sticky-finish"><span id="formStickyCnt"><b>${done}</b>/${req.length} completadas</span>
+    <button class="btn btn-pri" onclick="finishRun()">Finalizar recorrido</button></div>
+  <div style="height:80px"></div>`;
+  clearTimer();
+  tickTimer();
+  timerInt=setInterval(tickTimer,1000);
+}
+function startFromPanel(){
+  const t=$('#startTicket')?.value.trim();
+  if(!t){toast('Escribe el número de SCTASK para iniciar','bad');$('#startTicket')?.focus();return;}
+  formState.ticket=t;
+  formState.started=true;
+  formState.startedAt=new Date().toISOString();
+  formState.endedAt=null;
+  formState.accumSec=0;
+  formState.pausedAt=null;
+  saveDraft();
+  toast('⏱ Recorrido iniciado · '+t,'ok');
+  drawForm();
+}
+function secPills(sec){
+  const qs=activeQs(formState.loc).filter(q=>q.section===sec);
+  const reqSec=qs.filter(q=>q.required);
+  const doneSec=reqSec.filter(answered).length;
+  const oorN=qs.filter(q=>evalAnswer(q,formState.answers[q.id]??'').oor).length;
+  let pills='';
+  if(oorN) pills+=`<span class="pill bad">⚠ ${oorN}</span>`;
+  pills+= reqSec.length===0
+    ? `<span class="pill mut">${qs.length} ítems</span>`
+    : (doneSec===reqSec.length
+        ? `<span class="pill ok">✓ ${doneSec}/${reqSec.length}</span>`
+        : `<span class="pill ${doneSec?'pen':'mut'}">${doneSec}/${reqSec.length}</span>`);
+  return pills;
+}
+function toggleSec(i){
+  const s=secNames[i]; if(s==null) return;
+  const open=!formState.openSecs[s];
+  formState.openSecs[s]=open; saveDraft();
+  document.getElementById('secbody_'+i)?.classList.toggle('collapsed',!open);
+  document.getElementById('chev_'+i)?.classList.toggle('open',open);
+}
+function toggleAllSecs(open){
+  secNames.forEach((s,i)=>{
+    formState.openSecs[s]=open;
+    document.getElementById('secbody_'+i)?.classList.toggle('collapsed',!open);
+    document.getElementById('chev_'+i)?.classList.toggle('open',open);
+  });
+  saveDraft();
+}
+function updateSecHeaders(){
+  secNames.forEach((s,i)=>{
+    const el=document.getElementById('secpill_'+i);
+    if(el) el.innerHTML=secPills(s);
+  });
+}
+function qInner(q){
+  const val=formState.answers[q.id];
+  const ev=evalAnswer(q,val??'');
+  let ctrl='';
+  if(q.type==='number'){
+    ctrl=`<div class="in-num"><input type="number" step="any" value="${val??''}" placeholder="—"
+      oninput="setAns('${q.id}',this.value)" onchange="refreshQ('${q.id}')"><span class="u">${esc(q.unit||'')}</span></div>`;
+  }else if(q.type==='text'){
+    ctrl=`<textarea rows="2" style="width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;outline:none" placeholder="${esc(q.ph||'Escribe aquí…')}" oninput="setAns('${q.id}',this.value)">${esc(val||'')}</textarea>`;
+  }else if(q.type==='multi'){
+    ctrl=`<div class="opts">${(q.options||[]).map(o=>`<button class="opt ${(val||[]).includes(o.label)?'on':''}" onclick="toggleMulti('${q.id}','${esc(o.label)}')">${esc(o.label)}</button>`).join('')}</div>`;
+  }else{ /* select · boolean */
+    ctrl=`<div class="opts">${(q.options||[]).map(o=>`<button class="opt ${val===o.label?'on':''}" onclick="setAns('${q.id}','${esc(o.label)}')">${esc(o.label)}</button>`).join('')}</div>`;
+  }
+  let band='';
+  if(ev.oor){
+    band=`<div class="oor"><b>⚠ Fuera de rango · esperado ${esc(ev.expected)}</b>
+      <div class="exp">Si hubo una avería, marca la casilla y describe lo sucedido. Esta descripción aparecerá en el informe del recorrido.</div>
+      <label><input type="checkbox" ${formState.conf[q.id]?'checked':''} onchange="setConf('${q.id}',this.checked)"> Se detectó una avería y fue reportada</label>
+      <textarea rows="2" placeholder="Describe la avería, a quién se reportó y las acciones tomadas…" oninput="setNote('${q.id}',this.value)">${esc(formState.notes[q.id]||'')}</textarea></div>`;
+  }else if(answered(q)){
+    band=`<div class="okband">✓ Dentro de parámetros${rangeLabel(q)?' · '+rangeLabel(q):''}</div>`;
+  }
+  return `<div class="qt">${esc(q.text)}${q.required?'<span class="req">*</span>':''}${rangeLabel(q)?`<span class="meta">Rango: ${rangeLabel(q)}</span>`:''}</div>${ctrl}${band}`;
+}
+function refreshQ(qid){const el=document.getElementById('q_'+qid);if(el)el.innerHTML=qInner(getQ(qid));}
+function setAns(qid,val){
+  formState.answers[qid]=val;
+  saveDraft();updateFormProgress();updateSecHeaders();
+  const q=getQ(qid);
+  if(q&&q.type!=='number') refreshQ(qid);
+}
+function toggleMulti(qid,label){
+  const cur=formState.answers[qid]||[];
+  formState.answers[qid]=cur.includes(label)?cur.filter(x=>x!==label):[...cur,label];
+  saveDraft();refreshQ(qid);updateFormProgress();updateSecHeaders();
+}
+function setConf(qid,v){formState.conf[qid]=v;saveDraft();}
+function setNote(qid,v){formState.notes[qid]=v;saveDraft();}
+function finishRun(){
+  const missing=activeQs(formState.loc).filter(q=>q.required&&!answered(q));
+  if(missing.length){
+    toast(`Faltan ${missing.length} preguntas requeridas`,'bad');
+    const q0=missing[0], i=secNames.indexOf(q0.section);
+    if(i>=0&&!formState.openSecs[q0.section]){
+      formState.openSecs[q0.section]=true;saveDraft();
+      document.getElementById('secbody_'+i)?.classList.remove('collapsed');
+      document.getElementById('chev_'+i)?.classList.add('open');
+    }
+    setTimeout(()=>document.getElementById('q_'+q0.id)?.scrollIntoView({behavior:'smooth',block:'center'}),80);
+    return;
+  }
+  modal(`<div class="mh"><h3>Finalizar recorrido</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mb">
+    <p style="font-size:13px;margin-bottom:10px">Sitio: <b>${esc(formState.loc)}</b> · Ticket: <b>${esc(formState.ticket)}</b></p>
+    <p style="font-size:13px;margin-bottom:10px">Duración: <b class="timerchip" style="padding:5px 12px">⏱ ${fmtDur(elapsedSec())}</b>${formState.pausedAt?' <span style="color:var(--warn);font-size:12px">(actualmente en pausa — solo cuenta el tiempo efectivo)</span>':''}</p>
+    <p style="font-size:12.5px;color:var(--mut)">Se registrará el recorrido con ${Object.keys(formState.answers).length} respuestas. La duración (sin pausas) quedará guardada en el informe.</p>
+  </div>
+  <div class="mf"><button class="btn btn-gho" onclick="closeModal()">Cancelar</button><button class="btn btn-ok" onclick="confirmFinish()">Confirmar y guardar</button></div>`);
+}
+function confirmFinish(){
+  const ticket=formState.ticket||'SCTASK';
+  const endedAt=new Date().toISOString();
+  const durationSec=elapsedSec();
+  const qs=activeQs(formState.loc);
+  const run={id:uid('R'),loc:formState.loc,date:endedAt,techName:SES.name,ticket,
+    startedAt:formState.startedAt,endedAt,durationSec,
+    answers:{...formState.answers},outOfRange:[]};
+  qs.forEach(q=>{
+    const val=run.answers[q.id]; if(val===undefined)return;
+    const ev=evalAnswer(q,val);
+    if(ev.oor) run.outOfRange.push({qid:q.id,qtext:q.text,section:q.section,value:fmtVal(q,val),
+      expected:ev.expected,confirmed:!!formState.conf[q.id],note:formState.notes[q.id]||'',reviewed:false,reviewNote:''});
+  });
+  DB.runs.unshift(run);saveDB();
+  clearTimer();
+  localStorage.removeItem(DKEY);formState=null;closeModal();
+  toast('Recorrido guardado ✓ · Duración '+fmtDur(durationSec),'ok');
+  updateBadges();showTab('myruns');
+}
+
+/* ================== TÉCNICO · MIS RECORRIDOS ================== */
+function renderMyRuns(){
+  const runs=DB.runs.filter(r=>r.techName===SES.name);
+  $('#content').innerHTML=`<div class="card"><div class="hd"><h3>Mis recorridos (${runs.length})</h3></div>
+  ${runs.length?`<table class="tb"><tr><th>Fecha</th><th>Sitio</th><th>Ticket</th><th>Duración</th><th>Alertas</th><th></th></tr>
+  ${runs.map(r=>`<tr>
+    <td>${fmtDT(r.date)}</td><td>${locBadge(r.loc)}</td><td>${esc(r.ticket)}</td>
+    <td style="white-space:nowrap">${fmtDur(runDur(r))}</td>
+    <td>${r.outOfRange.length?`<span class="pill bad">${r.outOfRange.length}</span>`:'<span class="pill ok">0</span>'}</td>
+    <td style="text-align:right"><button class="btn btn-gho btn-sm" onclick="openRunModal('${r.id}')">Ver</button></td>
+  </tr>`).join('')}</table>`:'<div class="empty">Aún no has registrado recorridos</div>'}
+  </div>`;
+}
+
+/* ================== INIT (☁️ Firebase) ================== */
+async function init(){
+  if(window.FirebaseSync){
+    try{
+      await FirebaseSync.init();
+      const remote=await FirebaseSync.pull();
+      if(remote){ localStorage.setItem(KEY,JSON.stringify(remote)); }
+    }catch(e){ console.warn('Firebase no disponible, usando datos locales',e); }
+  }
+  loadDB();
+  /* Lista de login: solo técnicos activos */
+  $('#lt').innerHTML=DB.users.filter(u=>u.role==='tech'&&u.active!==false).map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
+  const s=sessionStorage.getItem('mantcap_ses');
+  if(s) openApp();
+}
+init();
+
+/* ================== PWA · Registrar Service Worker ================== */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(()=>console.log('✓ PWA lista (service worker activo)'))
+      .catch(e=>console.warn('SW no registrado:',e));
+  });
+}
+</script>
+</body>
+</html>

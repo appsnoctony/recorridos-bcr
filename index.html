@@ -214,7 +214,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
       <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
     </div>
-    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.11</b></div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.12</b></div>
   </div>
 </div>
 
@@ -251,7 +251,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
    v2.5–2.6 — Firebase, informes, gráficas comparativas
    v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
    ================================================================ */
-const APP_VERSION='v2.11';
+const APP_VERSION='v2.12';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -706,16 +706,18 @@ function seedRuns(loc,hm){
 }
 function loadDB(){
   try{DB=JSON.parse(localStorage.getItem(KEY))}catch(e){DB=null}
-  if(!DB||!DB.questions||!DB.questions.some(q=>q.loc==='CPP')){seedDB();return;}
+  if(!DB||typeof DB!=='object'||!DB.questions||!Array.isArray(DB.questions)||!DB.questions.some(q=>q.loc==='CPP')){seedDB();return;}
   const ids=new Set(DB.questions.map(q=>q.id));
   if(ids.size!==DB.questions.length){seedDB();return;}
-  if(!DB.settings) DB.settings={pinned:[]};
+  if(!DB.settings||typeof DB.settings!=='object') DB.settings={pinned:[]};
   if(!Array.isArray(DB.settings.pinned)) DB.settings.pinned=[];
-  if(!DB.users) DB.users=[];
+  if(!Array.isArray(DB.users)) DB.users=[];
+  if(!Array.isArray(DB.runs)) DB.runs=[];   /* ← FIX v2.12: evita crash si runs es null/undefined */
   DB.runs.sort((a,b)=>new Date(b.date)-new Date(a.date));
   DB.runs.forEach(r=>{
+    if(!r||typeof r!=='object') return;
     if(!r.loc) r.loc='CAP';
-    if(!r.answers) r.answers={};
+    if(!r.answers||typeof r.answers!=='object') r.answers={};
     if(r.durationSec==null){
       r.durationSec=(r.startedAt&&r.endedAt)?Math.max(0,Math.floor((new Date(r.endedAt)-new Date(r.startedAt))/1000)):null;
     }
@@ -726,9 +728,9 @@ function loadDB(){
       return a;
     }).filter(Boolean);
   });
-  migrateUPSIO();
-  migrateCPPRanges();
-  migrateUsers();
+  try{ migrateUPSIO(); }catch(e){ console.warn('migrateUPSIO falló:',e); }
+  try{ migrateCPPRanges(); }catch(e){ console.warn('migrateCPPRanges falló:',e); }
+  try{ migrateUsers(); }catch(e){ console.warn('migrateUsers falló:',e); }
 }
 function saveDB(){
   DB.updatedAt=new Date().toISOString(); /* marca de tiempo para conflictos */
@@ -1741,14 +1743,18 @@ function renderSettings(){
 
 /* ================== SINCRONIZACIÓN MANUAL (v2.11) ================== */
 function doManualSync(){
-  if(!window.FirebaseSync) return;
+  if(!window.FirebaseSync||typeof FirebaseSync.syncNow!=='function') return;
+  if(!DB){ toast('Espera un momento y vuelve a intentar','bad'); return; }
   const btn=$('#btnSync'); if(btn){btn.disabled=true;btn.textContent='⏳ Sincronizando…';}
   FirebaseSync.syncNow(false).then(r=>{
-    if(r.msg) toast(r.msg,r.ok?'ok':'bad');
-    if(r.ok){
-      /* Recargar datos desde localStorage (pull pudo traer estado remoto) */
+    if(r&&r.msg) toast(r.msg,r.ok?'ok':'bad');
+    if(r&&r.ok){
+      /* Recargar datos desde localStorage (sync pudo traer estado remoto) */
       loadDB();
-      $('#lt').innerHTML=DB.users.filter(u=>u.role==='tech'&&u.active!==false).map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
+      if(!DB){ toast('No se pudieron cargar los datos, reinicia la app','bad'); return; }
+      const techs=(DB.users||[]).filter(u=>u.role==='tech'&&u.active!==false);
+      const lt=$('#lt');
+      if(lt) lt.innerHTML=techs.map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
       if(currentTab==='set') renderSettings();
       else if(currentTab==='myruns') renderMyRuns();
       else if(currentTab==='dash') renderDash();
@@ -1756,6 +1762,9 @@ function doManualSync(){
       else if(currentTab==='alerts') renderAlerts();
       else if(currentTab==='users') renderUsers();
     }
+  }).catch(e=>{
+    console.warn('Sync manual falló:',e);
+    try{ toast('⚠ No se pudo sincronizar (sin conexión?)','bad'); }catch(_){}
   }).finally(()=>{ if(btn){btn.disabled=false;btn.textContent='☁️ Sincronizar ahora';} });
 }
 
@@ -2094,17 +2103,26 @@ async function init(){
     try{
       await FirebaseSync.init();
       const remote=await FirebaseSync.pull();
-      if(remote){ localStorage.setItem(KEY,JSON.stringify(remote)); }
+      /* FIX v2.12: solo aceptar datos remotos con estructura válida (no pisar lo local con basura) */
+      if(remote&&typeof remote==='object'&&Array.isArray(remote.questions)&&Array.isArray(remote.users)){
+        localStorage.setItem(KEY,JSON.stringify(remote));
+      }
     }catch(e){ console.warn('Firebase no disponible, usando datos locales',e); }
   }
   loadDB();
+  /* FIX v2.12: no seguir si la BD no se pudo inicializar */
+  if(!DB||!Array.isArray(DB.users)){ console.error('No se pudo inicializar la base de datos'); return; }
   /* Lista de login: solo técnicos activos */
-  $('#lt').innerHTML=DB.users.filter(u=>u.role==='tech'&&u.active!==false).map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
+  const lt=$('#lt');
+  if(lt) lt.innerHTML=DB.users.filter(u=>u.role==='tech'&&u.active!==false).map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');
   const s=sessionStorage.getItem('mantcap_ses');
   if(s) openApp();
   /* Avisar y refrescar cuando cambie la conexión */
   window.addEventListener('online',()=>{
-    if(SES){ toast('🌐 Conexión restaurada — sincronizando…','ok'); FirebaseSync.syncNow(true); }
+    if(SES&&window.FirebaseSync&&typeof FirebaseSync.syncNow==='function'){
+      toast('🌐 Conexión restaurada — sincronizando…','ok');
+      FirebaseSync.syncNow(true).catch(()=>{});
+    }
   });
   window.addEventListener('offline',()=>{
     if(SES) toast('📴 Sin conexión — los cambios se guardan localmente','');

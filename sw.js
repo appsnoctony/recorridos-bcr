@@ -5,7 +5,7 @@
    - Las llamadas a Firebase (datos/auth) NUNCA se cachean.
    v4 — Bump de caché para desplegar fixes de DB null (v2.12)
    ================================================================ */
-const CACHE='mantcap-v4';
+const CACHE='mantcap-v5';
 const PRECACHE=[
   './',
   './index.html',

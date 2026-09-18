@@ -4,7 +4,7 @@
    - Navegación: red primero → caché si no hay internet.
    - Las llamadas a Firebase (datos/auth) NUNCA se cachean.
    ================================================================ */
-const CACHE='mantcap-v1';
+const CACHE='mantcap-v2';
 const PRECACHE=[
   './',
   './index.html',

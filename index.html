@@ -787,6 +787,12 @@ const revAlerts=()=>alertsFor().filter(a=>a.reviewed);
 function setRole(r){role=r;$('#rtAdm').classList.toggle('on',r==='admin');$('#rtTec').classList.toggle('on',r==='tech');
   $('#fAdmin').classList.toggle('hidden',r!=='admin');$('#fTech').classList.toggle('hidden',r!=='tech');$('#lerr').classList.add('hidden');}
 function doLogin(){
+  /* FIX v2.12: no crashear si la BD aún no está lista */
+  if(!DB||!Array.isArray(DB.users)){
+    $('#lerr').textContent='El sistema se está iniciando. Espera unos segundos e intenta de nuevo.';
+    $('#lerr').classList.remove('hidden');
+    return;
+  }
   let u=null;
   if(role==='admin'){const uu=$('#lu').value.trim(),pp=$('#lp').value;u=DB.users.find(x=>x.role==='admin'&&x.u===uu&&x.p===pp);}
   else{const nn=$('#lt').value,pp=$('#lpin').value;u=DB.users.find(x=>x.role==='tech'&&x.name===nn&&x.p===pp&&(x.active!==false));}

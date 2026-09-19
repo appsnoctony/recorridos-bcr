@@ -279,7 +279,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
       <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
     </div>
-    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.13</b></div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.14</b></div>
   </div>
 </div>
 
@@ -305,6 +305,9 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 <script>
 /* ================================================================
    MantCAP · PWA de gestión de mantenimiento
+   v2.14 — Preguntas duplicadas: se corrige la migración que las recreaba
+           en cada arranque, se limpian automáticamente las repetidas y
+           se agrega el botón "Eliminar" en Preguntas.
    v2.13 — Correcciones:
            · El teclado ya no se cierra al escribir (los campos de texto
              y los buscadores ya no se vuelven a dibujar en cada tecla).
@@ -323,7 +326,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
    v2.5–2.6 — Firebase, informes, gráficas comparativas
    v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
    ================================================================ */
-const APP_VERSION='v2.13';
+const APP_VERSION='v2.14';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -620,7 +623,7 @@ function migrateUPSIO(){
   let changed=false;
   DB.questions.forEach(q=>{ if(UPS_RENAMES[q.text]){ q.text=UPS_RENAMES[q.text]; changed=true; } });
   UPS_IO_DEFS.forEach(([loc,d])=>{
-    if(!DB.questions.some(q=>q.text===d[1])){
+    if(!DB.questions.some(q=>q.loc===loc&&normQText(q.text)===normQText(d[1]))){
       const q={...qFromDef(d,loc)};
       q.id=loc.toLowerCase()+(DB.qseq++);
       let idx=-1;
@@ -692,6 +695,47 @@ function migrateUsers(){
     if(u.createdAt===undefined){ u.createdAt=new Date().toISOString(); changed=true; }
   });
   if(changed) saveDB();
+}
+
+/* Texto sin el paréntesis final de rango: "… Fase A (Máximo 84A)" == "… Fase A" */
+const normQText=t=>String(t||'').replace(/\s*\([^)]*\)\s*$/,'').trim().toLowerCase();
+
+/* ============ MIGRACIÓN v2.14 · Eliminar preguntas duplicadas ============ */
+/* Agrupa por sitio + sección + texto. Conserva la más antigua (id menor),
+   traslada las respuestas de las repetidas a la conservada y anota los ids
+   borrados en DB.deletedQ para que también se eliminen de Firestore. */
+function dedupeQuestions(){
+  const idNum=id=>parseInt(String(id).replace(/\D/g,''),10)||0;
+  const groups=new Map();
+  DB.questions.forEach(q=>{
+    const k=q.loc+'||'+q.section+'||'+String(q.text).trim().toLowerCase();
+    if(!groups.has(k)) groups.set(k,[]);
+    groups.get(k).push(q);
+  });
+  const remap=new Map(); /* id repetido → id conservado */
+  groups.forEach(list=>{
+    if(list.length<2) return;
+    list.sort((a,b)=>idNum(a.id)-idNum(b.id));
+    const keep=list[0];
+    list.slice(1).forEach(d=>remap.set(d.id,keep.id));
+  });
+  if(!remap.size) return 0;
+  DB.questions=DB.questions.filter(q=>!remap.has(q.id));
+  DB.runs.forEach(r=>{
+    remap.forEach((keepId,oldId)=>{
+      if(r.answers&&r.answers[oldId]!==undefined){
+        if(r.answers[keepId]===undefined||r.answers[keepId]==='') r.answers[keepId]=r.answers[oldId];
+        delete r.answers[oldId];
+      }
+    });
+    const seen=new Set();
+    r.outOfRange=(r.outOfRange||[])
+      .map(a=>{ if(remap.has(a.qid)) a.qid=remap.get(a.qid); return a; })
+      .filter(a=>{ if(seen.has(a.qid)) return false; seen.add(a.qid); return true; });
+  });
+  DB.deletedQ=[...new Set([...(DB.deletedQ||[]),...remap.keys()])];
+  saveDB();
+  return remap.size;
 }
 
 function qFromDef(d,loc){
@@ -801,6 +845,7 @@ function loadDB(){
   if(!Array.isArray(DB.settings.pinned)) DB.settings.pinned=[];
   if(!Array.isArray(DB.users)) DB.users=[];
   if(!Array.isArray(DB.runs)) DB.runs=[];
+  if(!Array.isArray(DB.deletedQ)) DB.deletedQ=[];
   DB.runs.sort((a,b)=>new Date(b.date)-new Date(a.date));
   DB.runs.forEach(r=>{
     if(!r||typeof r!=='object') return;
@@ -819,6 +864,10 @@ function loadDB(){
   try{ migrateUPSIO(); }catch(e){ console.warn('migrateUPSIO falló:',e); }
   try{ migrateCPPRanges(); }catch(e){ console.warn('migrateCPPRanges falló:',e); }
   try{ migrateUsers(); }catch(e){ console.warn('migrateUsers falló:',e); }
+  try{
+    const n=dedupeQuestions();
+    if(n) setTimeout(()=>{try{toast(`🧹 Se eliminaron ${n} preguntas duplicadas`,'ok');}catch(_){}},800);
+  }catch(e){ console.warn('dedupeQuestions falló:',e); }
 }
 function saveDB(){
   DB.updatedAt=new Date().toISOString(); /* marca de tiempo para conflictos */
@@ -1533,10 +1582,23 @@ function renderQuestionsList(){
       <td style="text-align:right;white-space:nowrap">
         <button class="btn btn-gho btn-sm" onclick="editQModal('${q.id}')">Editar</button>
         <button class="btn ${q.active?'btn-gho':'btn-ok'} btn-sm" onclick="toggleQ('${q.id}')">${q.active?'Desactivar':'Activar'}</button>
+        <button class="btn btn-bad btn-sm" onclick="delQ('${q.id}')">Eliminar</button>
       </td></tr>`).join('')}</table>`).join('')||'<div class="empty">Sin resultados</div>'}
   </div>`;
 }
 function toggleQ(id){const q=getQ(id);q.active=!q.active;saveDB();toast(q.active?'Pregunta activada':'Pregunta desactivada','ok');renderQuestionsList();}
+function delQ(id){
+  const q=getQ(id); if(!q) return;
+  const nRuns=DB.runs.filter(r=>r.answers&&r.answers[id]!==undefined&&r.answers[id]!=='').length;
+  confirmModal(`<p>¿Eliminar definitivamente esta pregunta?</p>
+    <p style="margin-top:8px"><b>${esc(q.section)}</b><br>${esc(q.text)}</p>
+    ${nRuns?`<p style="margin-top:8px;color:var(--warn);font-size:12.5px">Tiene respuestas en ${nRuns} recorrido(s). Esos recorridos conservan el dato guardado, pero la pregunta dejará de aparecer en el formulario y en las gráficas. Si solo quieres ocultarla, usa «Desactivar».</p>`:''}`,
+    ()=>{
+      DB.questions=DB.questions.filter(x=>x.id!==id);
+      DB.deletedQ=[...new Set([...(DB.deletedQ||[]),id])];
+      saveDB();toast('Pregunta eliminada','ok');renderQuestionsList();
+    },'Eliminar');
+}
 function editQModal(id){
   const q=id?getQ(id):null;
   modal(`<div class="mh"><h3>${q?'Editar pregunta':'Nueva pregunta'}</h3><button class="x" onclick="closeModal()">×</button></div>
@@ -1840,6 +1902,7 @@ function renderSettings(){
     </div></div>
     <div class="card" style="grid-column:1/-1"><div class="hd"><h3>Acerca de</h3></div><div class="bd" style="font-size:13px;color:var(--mut);line-height:1.8">
       <b style="color:var(--ink)">MantCAP ${APP_VERSION}</b> · Gestión de mantenimiento CAP & CPP<br>
+      <b style="color:var(--ink)">v2.14:</b> limpieza automática de preguntas duplicadas y botón para eliminar preguntas.<br>
       <b style="color:var(--ink)">v2.13:</b> teclado estable al escribir, PDF con observaciones legibles y diseño móvil corregido.<br>
       <b style="color:var(--ink)">v2.11–2.12:</b> sincronización manual, estado de conexión y correcciones de arranque.<br>
       <b style="color:var(--ink)">v2.10:</b> métricas en tarjetas agrupadas; PWA instalable.<br>

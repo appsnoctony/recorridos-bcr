@@ -1,11 +1,14 @@
 /* ================================================================
    MantCAP · Service Worker (PWA offline-first)
    - Precachea el "esqueleto" de la app (HTML, CDN, iconos).
-   - Navegación: red primero → caché si no hay internet.
+   - Archivos propios (index, js, manifest, iconos): RED PRIMERO,
+     y caché solo como respaldo sin internet → los cambios llegan
+     al recargar, sin quedarse con versiones viejas.
+   - Librerías externas (CDN, fuentes): caché primero.
    - Las llamadas a Firebase (datos/auth) NUNCA se cachean.
-   v4 — Bump de caché para desplegar fixes de DB null (v2.12)
+   Al publicar una versión nueva, sube el número de CACHE.
    ================================================================ */
-const CACHE='mantcap-v8';
+const CACHE='mantcap-v9';
 const PRECACHE=[
   './',
   './index.html',
@@ -26,9 +29,21 @@ const PRECACHE=[
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
 ];
 
+/* Dominios de Firebase que nunca deben pasar por la caché */
+const NO_CACHE_HOSTS=[
+  'firestore.googleapis.com',
+  'identitytoolkit.googleapis.com',
+  'securetoken.googleapis.com',
+  'firebaseinstallations.googleapis.com',
+  'www.googleapis.com'
+];
+
 self.addEventListener('install',e=>{
   e.waitUntil(
-    caches.open(CACHE).then(c=>c.addAll(PRECACHE)).then(()=>self.skipWaiting())
+    caches.open(CACHE)
+      /* Se agregan uno a uno: si un archivo falla, los demás se guardan igual */
+      .then(c=>Promise.all(PRECACHE.map(u=>c.add(u).catch(()=>{}))))
+      .then(()=>self.skipWaiting())
   );
 });
 
@@ -45,33 +60,34 @@ self.addEventListener('fetch',e=>{
   if(req.method!=='GET') return;
   const url=new URL(req.url);
 
-  /* 1) APIs de Firebase (datos y auth): SIEMPRE red, jamás caché */
-  const esApiFirebase=(
-    (url.hostname.endsWith('googleapis.com')&&/(firestore|identitytoolkit|securetoken)/.test(url.hostname))
-    || url.hostname==='firebaseio.com'
-  );
-  if(esApiFirebase) return; /* deja pasar a la red */
+  /* 1) Firebase (datos y autenticación): directo a la red */
+  if(NO_CACHE_HOSTS.includes(url.hostname)) return;
 
-  /* 2) Navegación (abrir la app): red primero, caché de respaldo */
-  if(req.mode==='navigate'||req.destination==='document'){
+  /* 2) Archivos propios y navegación: red primero, caché de respaldo */
+  if(url.origin===self.location.origin||req.mode==='navigate'){
     e.respondWith(
-      fetch(req).then(res=>{
-        const copia=res.clone();
-        caches.open(CACHE).then(c=>c.put('./index.html',copia));
-        return res;
-      }).catch(()=>caches.match('./index.html'))
+      fetch(req,{cache:'no-cache'})
+        .then(res=>{
+          if(res&&res.ok){
+            const copia=res.clone();
+            caches.open(CACHE).then(c=>c.put(req,copia));
+          }
+          return res;
+        })
+        .catch(()=>caches.match(req,{ignoreSearch:true}).then(r=>
+          r||(req.mode==='navigate'?caches.match('./index.html'):undefined)))
     );
     return;
   }
 
-  /* 3) Estáticos (CDN, fuentes, iconos, config): caché primero */
+  /* 3) Librerías externas y fuentes: caché primero */
   e.respondWith(
-    caches.match(req).then(hit=>hit||fetch(req).then(res=>{
-      if(res.ok){
+    caches.match(req).then(r=>r||fetch(req).then(res=>{
+      if(res&&(res.ok||res.type==='opaque')){
         const copia=res.clone();
         caches.open(CACHE).then(c=>c.put(req,copia));
       }
       return res;
-    }).catch(()=>hit))
+    }).catch(()=>r))
   );
 });

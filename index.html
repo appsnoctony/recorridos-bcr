@@ -299,7 +299,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
       <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
     </div>
-    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.15</b></div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.15.1</b></div>
   </div>
 </div>
 
@@ -348,7 +348,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
    v2.5–2.6 — Firebase, informes, gráficas comparativas
    v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
    ================================================================ */
-const APP_VERSION='v2.15';
+const APP_VERSION='v2.15.1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -2338,6 +2338,15 @@ async function init(){
   });
 }
 init();
+
+/* ================== ORIENTACIÓN LIBRE (vertical y horizontal) ================== */
+/* Suelta cualquier bloqueo previo de orientación (Android/Chrome). */
+try{
+  if(screen.orientation){
+    if(typeof screen.orientation.unlock==='function') screen.orientation.unlock();
+    if(typeof screen.orientation.lock==='function') screen.orientation.lock('any').catch(()=>{});
+  }
+}catch(_){}
 
 /* ================== PWA · Registrar Service Worker ================== */
 if('serviceWorker' in navigator){

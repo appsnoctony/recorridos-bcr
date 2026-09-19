@@ -9,6 +9,8 @@
    - v3.1: sincronización manual (pull+push), estado de conexión,
      última sincronización, reintento automático y resolución de
      conflictos por fecha (gana el cambio más reciente).
+   - v3.2: las preguntas eliminadas en la app (DB.deletedQ) también
+     se borran de Firestore, para que no vuelvan a aparecer.
    ================================================================ */
 const FirebaseSync = (function(){
   let db = null, ready = false;
@@ -193,12 +195,24 @@ const FirebaseSync = (function(){
     });
     DB.questions.forEach(q => ops.push({ ref: db.collection(COL.questions).doc(q.id), data: q }));
     DB.runs.forEach(r => ops.push({ ref: db.collection(COL.runs).doc(r.id), data: r }));
+
+    /* v3.2: borrar de la nube las preguntas eliminadas en la app
+       (duplicadas o borradas a mano). Solo se borran los ids anotados
+       en DB.deletedQ que ya no existen en la lista de preguntas. */
+    const liveIds = new Set(DB.questions.map(q => q.id));
+    const toDelete = (DB.deletedQ || []).filter(id => id && !liveIds.has(id));
+    toDelete.forEach(id => ops.push({ ref: db.collection(COL.questions).doc(id), del: true }));
+
     for(let i = 0; i < ops.length; i += 400){
       const batch = db.batch();
-      ops.slice(i, i + 400).forEach(o => batch.set(o.ref, o.data));
+      ops.slice(i, i + 400).forEach(o => o.del ? batch.delete(o.ref) : batch.set(o.ref, o.data));
       await batch.commit();
     }
-    console.log('[FirebaseSync] ✓ Guardado en la nube (' + ops.length + ' documentos)');
+    if(toDelete.length){
+      DB.deletedQ = [];
+      console.log('[FirebaseSync] 🧹 ' + toDelete.length + ' preguntas eliminadas de la nube');
+    }
+    console.log('[FirebaseSync] ✓ Guardado en la nube (' + (ops.length - toDelete.length) + ' documentos)');
   }
 
   return { init, pull, push, syncNow, isConfigured, isOnline, lastSync };

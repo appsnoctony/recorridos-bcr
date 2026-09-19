@@ -91,6 +91,9 @@ h1,h2,h3{font-weight:700}
 .grid>*{min-width:0}
 .g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
 @media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
+.g-dash{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
+@media(max-width:1200px){.g-dash{grid-template-columns:1fr}}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);box-shadow:var(--shadow);min-width:0}
 .card .hd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .card .hd h3{font-size:14px}
@@ -189,7 +192,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 /* ================================================================
    RESPONSIVE · TABLETAS Y MÓVILES (v2.13)
    ================================================================ */
-@media(max-width:860px){
+@media(max-width:860px),(max-height:500px) and (orientation:landscape){
   .side{display:none}
   .main{margin-left:0}
 
@@ -248,6 +251,23 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
   .chart-wrap{height:260px}
   .login-card{padding:22px}
 }
+/* Móvil en horizontal (poca altura): barra inferior compacta y márgenes de notch */
+@media(max-height:500px) and (orientation:landscape){
+  :root{--navH:46px}
+  .mobnav{padding:3px calc(6px + env(safe-area-inset-right)) calc(3px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left))}
+  .mobnav .nitem{flex-direction:row;gap:6px;padding:7px 4px;font-size:11px}
+  .mobnav .nitem svg{width:17px;height:17px}
+  .mobnav .nitem .cnt{position:static;margin-left:2px}
+  .topbar{padding-top:calc(6px + env(safe-area-inset-top));padding-bottom:6px}
+  .tform-head{position:static;padding-top:8px}
+  .content{padding-left:calc(12px + env(safe-area-inset-left));padding-right:calc(12px + env(safe-area-inset-right));padding-bottom:calc(var(--navH) + 24px + env(safe-area-inset-bottom))}
+  .mask{align-items:center;padding:8px}
+  .modal,.modal.wide{max-width:720px;max-height:96vh;max-height:96dvh;border-radius:14px}
+  .sticky-finish{left:auto;right:calc(12px + env(safe-area-inset-right));min-width:300px}
+  #login{align-items:flex-start;padding:12px}
+  .login-card{max-width:440px}
+  .chart-wrap{height:220px}
+}
 @media(max-width:700px){.mgrid{grid-template-columns:1fr}}
 @media(max-width:560px){
   .g3,.g2{grid-template-columns:1fr}
@@ -279,7 +299,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
       <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
     </div>
-    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.14</b></div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.15</b></div>
   </div>
 </div>
 
@@ -305,6 +325,8 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 <script>
 /* ================================================================
    MantCAP · PWA de gestión de mantenimiento
+   v2.15 — Limpieza de duplicadas sin aviso, pantalla vertical y horizontal,
+           y tabla "Últimos recorridos" del Resumen ya no se corta en PC.
    v2.14 — Preguntas duplicadas: se corrige la migración que las recreaba
            en cada arranque, se limpian automáticamente las repetidas y
            se agrega el botón "Eliminar" en Preguntas.
@@ -326,7 +348,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
    v2.5–2.6 — Firebase, informes, gráficas comparativas
    v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
    ================================================================ */
-const APP_VERSION='v2.14';
+const APP_VERSION='v2.15';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -864,10 +886,7 @@ function loadDB(){
   try{ migrateUPSIO(); }catch(e){ console.warn('migrateUPSIO falló:',e); }
   try{ migrateCPPRanges(); }catch(e){ console.warn('migrateCPPRanges falló:',e); }
   try{ migrateUsers(); }catch(e){ console.warn('migrateUsers falló:',e); }
-  try{
-    const n=dedupeQuestions();
-    if(n) setTimeout(()=>{try{toast(`🧹 Se eliminaron ${n} preguntas duplicadas`,'ok');}catch(_){}},800);
-  }catch(e){ console.warn('dedupeQuestions falló:',e); }
+  try{ dedupeQuestions(); }catch(e){ console.warn('dedupeQuestions falló:',e); }
 }
 function saveDB(){
   DB.updatedAt=new Date().toISOString(); /* marca de tiempo para conflictos */
@@ -1083,11 +1102,11 @@ function renderDash(){
     <div class="card kpi"><div class="v" style="color:var(--ok)">${compliance}</div><div class="l">Mediciones dentro de rango</div></div>
   </div>
   ${locFilter==='ALL'?`<p style="font-size:12.5px;color:var(--mut);margin:10px 2px">CAP: ${capN} recorridos · CPP: ${cppN} recorridos</p>`:''}
-  <div class="grid g2" style="margin-top:8px">
+  <div class="grid g-dash" style="margin-top:8px">
     <div class="card">
       <div class="hd"><h3>Últimos recorridos</h3><span class="sp"><button class="btn btn-gho btn-sm" onclick="showTab('hist')">Ver todos</button></span></div>
-      ${runs.length?`<table class="tb">
-        <tr><th>Fecha</th><th>Sitio</th><th>Técnico</th><th>Ticket</th><th>Duración</th><th>Estado</th><th></th></tr>
+      ${runs.length?`<div class="tscroll"><table class="tb">
+        <tr><th>Fecha</th><th>Sitio</th><th>Técnico</th><th>Ticket</th><th>Duración</th><th>Alertas</th><th></th></tr>
         ${runs.slice(0,6).map(r=>`<tr>
           <td style="white-space:nowrap"><b>${fmtD(r.date)}</b></td>
           <td>${locBadge(r.loc)}</td>
@@ -1095,11 +1114,11 @@ function renderDash(){
           <td style="white-space:nowrap;color:var(--mut)">${esc(r.ticket)}</td>
           <td style="white-space:nowrap">${fmtDur(runDur(r))}</td>
           <td>${r.outOfRange.length
-            ?`<span class="pill bad">${r.outOfRange.length} fuera de rango</span>`
+            ?`<span class="pill bad" title="${r.outOfRange.length} fuera de rango">⚠ ${r.outOfRange.length}</span>`
             :`<span class="pill ok">OK</span>`}</td>
           <td style="text-align:right"><button class="btn btn-gho btn-sm" onclick="openRunModal('${r.id}')">Ver</button></td>
         </tr>`).join('')}
-      </table>`:'<div class="empty">Sin recorridos aún</div>'}
+      </table></div>`:'<div class="empty">Sin recorridos aún</div>'}
     </div>
     <div class="card"><div class="hd"><h3>Secciones con más alertas</h3></div><div class="bd">
       ${topSec.map(([s,c])=>{const max=topSec[0][1];return `<div style="margin-bottom:10px">
@@ -1902,6 +1921,7 @@ function renderSettings(){
     </div></div>
     <div class="card" style="grid-column:1/-1"><div class="hd"><h3>Acerca de</h3></div><div class="bd" style="font-size:13px;color:var(--mut);line-height:1.8">
       <b style="color:var(--ink)">MantCAP ${APP_VERSION}</b> · Gestión de mantenimiento CAP & CPP<br>
+      <b style="color:var(--ink)">v2.15:</b> la app se adapta a pantalla vertical y horizontal; resumen sin cortes en PC.<br>
       <b style="color:var(--ink)">v2.14:</b> limpieza automática de preguntas duplicadas y botón para eliminar preguntas.<br>
       <b style="color:var(--ink)">v2.13:</b> teclado estable al escribir, PDF con observaciones legibles y diseño móvil corregido.<br>
       <b style="color:var(--ink)">v2.11–2.12:</b> sincronización manual, estado de conexión y correcciones de arranque.<br>

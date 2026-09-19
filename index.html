@@ -29,17 +29,19 @@
   --bg:#f2f5f9; --card:#ffffff; --ink:#16233a; --mut:#5c6b82; --line:#e3e8ef;
   --pri:#0e5fd8; --pri2:#0a4aa8; --ok:#178f5f; --warn:#b97900; --bad:#d13c3c;
   --side:#0f1c2e; --side2:#16283f; --rad:14px; --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.06);
+  --navH:62px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-tap-highlight-color:transparent}
-button{font-family:inherit;cursor:pointer}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button{font-family:inherit;cursor:pointer;touch-action:manipulation}
 input,select,textarea{font-family:inherit;font-size:14px}
 h1,h2,h3{font-weight:700}
 .hidden{display:none!important}
 
 /* ---------- LOGIN ---------- */
-#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+#login{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;
   background:radial-gradient(1200px 600px at 80% -10%,#1b3a63 0%,var(--side) 55%);}
 .login-card{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .logo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -59,11 +61,12 @@ h1,h2,h3{font-weight:700}
 .btn-bad{background:var(--bad);color:#fff}
 .btn-ok{background:var(--ok);color:#fff}
 .btn-sm{padding:7px 11px;font-size:12.5px;border-radius:8px}
+.btn:disabled{opacity:.6;cursor:default}
 .demo{margin-top:14px;background:#f6f8fb;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mut);line-height:1.6}
 .err{background:#fdecec;color:var(--bad);border:1px solid #f5c2c2;border-radius:10px;padding:9px 12px;font-size:12.5px;margin-bottom:10px}
 
 /* ---------- SHELL ---------- */
-.shell{display:flex;min-height:100vh}
+.shell{display:flex;min-height:100vh;min-height:100dvh}
 .side{width:228px;background:var(--side);color:#c8d3e0;display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:30}
 .side .brand{padding:16px;border-bottom:1px solid rgba(255,255,255,.08)}
 .side .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--pri);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;margin-right:8px}
@@ -79,24 +82,16 @@ h1,h2,h3{font-weight:700}
 .topbar{background:#fff;border-bottom:1px solid var(--line);padding:12px 22px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
 .topbar h1{font-size:16.5px}
 .topbar .who{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mut)}
-.avatar{width:32px;height:32px;border-radius:99px;background:#eef4ff;color:var(--pri);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
-.content{padding:20px 22px 40px;max-width:1400px;width:100%}
+.avatar{width:32px;height:32px;border-radius:99px;background:#eef4ff;color:var(--pri);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+.content{padding:20px 22px 40px;max-width:1400px;width:100%;min-width:0}
 .mobnav{display:none}
-@media(max-width:860px){
-  .side{display:none}
-  .main{margin-left:0}
-  .mobnav{display:flex;gap:6px;overflow-x:auto;background:var(--side);padding:8px;position:sticky;top:0;z-index:25}
-  .mobnav .nitem{white-space:nowrap;padding:8px 12px}
-  .content{padding:14px 12px 60px}
-  .topbar{padding:10px 12px}
-}
 
 /* ---------- COMPONENTES ---------- */
 .grid{display:grid;gap:14px}
+.grid>*{min-width:0}
 .g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
 @media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.g4,.g3,.g2{grid-template-columns:1fr}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);box-shadow:var(--shadow)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);box-shadow:var(--shadow);min-width:0}
 .card .hd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .card .hd h3{font-size:14px}
 .card .hd .sp{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -121,10 +116,10 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 
 /* ---------- SELECCIÓN DE MÉTRICAS (tarjetas por grupo) ---------- */
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
-@media(max-width:700px){.mgrid{grid-template-columns:1fr}}
+.mgrid>*{min-width:0}
 .mgroup{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
 .mg-hd{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f8fafc;border-bottom:1px solid var(--line);font-size:12.5px}
-.mg-hd b{flex:1}
+.mg-hd b{flex:1;min-width:0}
 .mg-hd .cnt{font-size:11px;color:var(--mut);font-weight:600}
 .mg-body{display:flex;flex-wrap:wrap;gap:2px;padding:5px 8px}
 .mchk{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;user-select:none}
@@ -137,10 +132,10 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 .timerchip i{width:9px;height:9px;border-radius:99px;background:#7dffc0;animation:pu 1.4s infinite}
 .timerchip.paused{background:#5c6b82}
 .timerchip.paused i{background:#dfe6ee;animation:none}
-.ticketchip{display:inline-flex;align-items:center;gap:6px;background:#eef4ff;color:var(--pri);border-radius:99px;padding:7px 14px;font-weight:700;font-size:13px}
+.ticketchip{display:inline-flex;align-items:center;gap:6px;background:#eef4ff;color:var(--pri);border-radius:99px;padding:7px 14px;font-weight:700;font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ---------- FORM TÉCNICO ---------- */
-.tform-head{position:sticky;top:0;z-index:15;background:rgba(242,245,249,.92);backdrop-filter:blur(6px);padding:10px 0;margin-bottom:6px}
+.tform-head{position:sticky;top:0;z-index:15;background:rgba(242,245,249,.95);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:10px 0;margin-bottom:6px}
 .prog{height:8px;background:#e3e8ef;border-radius:99px;overflow:hidden;margin-top:8px}
 .prog i{display:block;height:100%;background:var(--pri);border-radius:99px;transition:width .25s}
 .sec{margin-bottom:14px;border:1px solid var(--line);border-radius:var(--rad);background:#fff;box-shadow:var(--shadow);overflow:hidden}
@@ -153,12 +148,12 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 .chev{display:inline-flex;align-items:center;justify-content:center;width:18px;font-size:11px;color:var(--mut);transition:transform .18s;flex:none}
 .chev.open{transform:rotate(90deg)}
 .sec-body.collapsed{display:none}
-.sec-hd .title{flex:1;text-align:left;min-width:0}
+.sec-hd .title{flex:1;text-align:left;min-width:0;overflow-wrap:anywhere}
 .sec-hd .pills{display:flex;gap:6px;align-items:center;flex:none}
 
 .q{padding:13px 16px;border-bottom:1px solid var(--line)}
 .q:last-child{border-bottom:none}
-.q .qt{font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.q .qt{font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;overflow-wrap:anywhere}
 .q .qt .req{color:var(--bad)}
 .q .meta{font-size:11.5px;color:var(--mut);font-weight:500}
 .in-num{display:flex;align-items:center;gap:8px;max-width:280px}
@@ -175,21 +170,91 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 .oor textarea{width:100%;border:1px solid #f3b8b8;border-radius:8px;padding:7px 9px;font-size:12.5px;resize:vertical}
 .okband{margin-top:10px;background:#e4f5ec;border:1px solid #bfe6d2;border-left:4px solid var(--ok);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--ok);font-weight:600}
 .sticky-finish{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:40;display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);box-shadow:0 8px 30px rgba(16,24,40,.18);border-radius:99px;padding:8px 10px 8px 18px;font-size:13px}
-@media(max-width:560px){.sticky-finish{left:12px;right:12px;transform:none;justify-content:space-between}}
 
 /* ---------- MODAL / TOAST ---------- */
 .mask{position:fixed;inset:0;background:rgba(10,18,30,.55);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal{background:#fff;border-radius:16px;width:100%;max-width:640px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
 .modal.wide{max-width:900px}
 .modal .mh{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
-.modal .mh h3{font-size:15px}
-.modal .mh .x{margin-left:auto;border:none;background:none;font-size:20px;color:var(--mut);line-height:1}
-.modal .mb{padding:16px 18px;overflow:auto}
+.modal .mh h3{font-size:15px;min-width:0;overflow-wrap:anywhere}
+.modal .mh .x{margin-left:auto;border:none;background:none;font-size:24px;color:var(--mut);line-height:1;padding:0 4px}
+.modal .mb{padding:16px 18px;overflow:auto;-webkit-overflow-scrolling:touch}
 .modal .mf{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 #toasts{position:fixed;top:14px;right:14px;z-index:99;display:flex;flex-direction:column;gap:8px}
 .toast{background:#101c30;color:#fff;border-radius:10px;padding:11px 15px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.3);animation:tin .25s;display:flex;gap:8px;align-items:center;max-width:340px}
 .toast.ok{background:#0f5c3f}.toast.bad{background:#8f2424}
 @keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1}}
+@keyframes pu{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ================================================================
+   RESPONSIVE · TABLETAS Y MÓVILES (v2.13)
+   ================================================================ */
+@media(max-width:860px){
+  .side{display:none}
+  .main{margin-left:0}
+
+  /* Barra superior: compacta, no fija (evita choque con la barra de abajo) */
+  .topbar{position:static;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;gap:8px}
+  .topbar h1{font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .who{margin-left:0;flex:none;gap:8px}
+  #whoName{display:none}
+
+  /* Navegación inferior tipo app */
+  .mobnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--side);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));gap:2px;box-shadow:0 -4px 18px rgba(0,0,0,.25)}
+  .mobnav .nitem{flex:1 1 0;min-width:0;flex-direction:column;justify-content:center;gap:3px;
+    padding:6px 2px;margin:0;font-size:10px;line-height:1.15;text-align:center;position:relative;border-radius:10px}
+  .mobnav .nitem svg{width:20px;height:20px}
+  .mobnav .nitem span:not(.cnt){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobnav .nitem .cnt{position:absolute;top:1px;left:calc(50% + 6px);margin:0;font-size:9px;padding:0 5px}
+
+  .content{padding:12px 12px calc(var(--navH) + 28px + env(safe-area-inset-bottom))}
+
+  /* Tarjetas y barras de herramientas */
+  .card .hd{padding:12px}
+  .card .hd .sp{margin-left:0;width:100%}
+  .card .hd .sp input[type=date]{flex:1 1 120px;min-width:0}
+  .card .bd{padding:12px}
+  .toolbar{gap:6px}
+  .toolbar input[type=date]{flex:1 1 130px;min-width:0}
+  .toolbar input:not([type=date]),.toolbar select{flex:1 1 100%;min-width:0;max-width:100%!important}
+
+  /* Tablas: desplazamiento horizontal dentro de su tarjeta */
+  table.tb{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tb th,.tb td{padding:8px 9px;font-size:12.5px}
+
+  /* Campos a 16px: evita el zoom automático de iOS al enfocar */
+  input,select,textarea{font-size:16px!important}
+  .in-num{max-width:100%}
+
+  /* Formulario del técnico */
+  .tform-head{padding-top:calc(8px + env(safe-area-inset-top))}
+  .q{padding:12px}
+  .opt{padding:10px 14px}
+  .sticky-finish{left:10px;right:10px;transform:none;justify-content:space-between;border-radius:16px;
+    bottom:calc(var(--navH) + 8px + env(safe-area-inset-bottom))}
+
+  /* Ventanas como hoja inferior */
+  .mask{align-items:flex-end;padding:0}
+  .modal,.modal.wide{max-width:100%;max-height:92vh;max-height:92dvh;border-radius:18px 18px 0 0}
+  .modal .mb{padding:14px}
+  .modal .mf{padding:12px 14px calc(12px + env(safe-area-inset-bottom))}
+  .modal .mf .btn{flex:1 1 auto}
+
+  /* Avisos a lo ancho */
+  #toasts{left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));align-items:stretch}
+  .toast{max-width:none}
+
+  .chart-wrap{height:260px}
+  .login-card{padding:22px}
+}
+@media(max-width:700px){.mgrid{grid-template-columns:1fr}}
+@media(max-width:560px){
+  .g3,.g2{grid-template-columns:1fr}
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .kpi{padding:12px}
+  .kpi .v{font-size:21px}
+}
 </style>
 </head>
 <body>
@@ -214,7 +279,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
       <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
     </div>
-    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.12</b></div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.13</b></div>
   </div>
 </div>
 
@@ -223,7 +288,6 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
   <div class="shell">
     <aside class="side" id="sideNav"></aside>
     <div class="main">
-      <div class="mobnav" id="mobNav"></div>
       <div class="topbar">
         <h1 id="pageTitle">Resumen</h1>
         <div class="who"><span id="whoName"></span><span class="avatar" id="whoAva"></span>
@@ -232,6 +296,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="content" id="content"></div>
     </div>
   </div>
+  <nav class="mobnav" id="mobNav"></nav>
 </div>
 
 <div id="modalHost"></div>
@@ -240,9 +305,16 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 <script>
 /* ================================================================
    MantCAP · PWA de gestión de mantenimiento
+   v2.13 — Correcciones:
+           · El teclado ya no se cierra al escribir (los campos de texto
+             y los buscadores ya no se vuelven a dibujar en cada tecla).
+           · PDF: se limpian símbolos no soportados (≥ ≤ → emojis…)
+             para que las observaciones/anomalías se lean bien.
+           · Diseño móvil: barra de navegación inferior, tablas con
+             desplazamiento, ventanas tipo hoja, campos sin zoom en iOS.
+   v2.12 — Correcciones de arranque (DB nula) y validación de datos remotos
    v2.11 — Sincronización manual (botón en admin y técnico),
-           estado de conexión en el perfil del técnico, última
-           sincronización, técnicos sincronizan sus recorridos.
+           estado de conexión, última sincronización.
    v2.10.1 — PWA (manifest + SW + iconos)
    v2.10 — Métricas en tarjetas agrupadas; sin "Fijar en Resumen"
    v2.9 — Historial con filtro de fechas
@@ -251,7 +323,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
    v2.5–2.6 — Firebase, informes, gráficas comparativas
    v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
    ================================================================ */
-const APP_VERSION='v2.12';
+const APP_VERSION='v2.13';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -263,6 +335,22 @@ function fmtDur(sec){
   const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
   const p=n=>String(n).padStart(2,'0');
   return (h?h+'h ':'')+p(m)+'m '+p(s)+'s';
+}
+/* Texto seguro para PDF: las fuentes estándar de jsPDF solo soportan Latin-1.
+   Símbolos como ≥ ≤ → Δ ✓ o emojis se ven como letras sueltas separadas
+   ("d 6 0 %"), así que se convierten a equivalentes en ASCII. */
+function pdfSafe(s){
+  if(s==null) return '';
+  return String(s)
+    .replace(/[\u00A0\u202F\u2009\u200A\u2007]/g,' ')
+    .replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/≠/g,'!=').replace(/±/g,'+/-')
+    .replace(/→/g,'->').replace(/←/g,'<-').replace(/Δ/g,'Delta ')
+    .replace(/[–—]/g,'-').replace(/[‘’‚]/g,"'").replace(/[“”„]/g,'"')
+    .replace(/•/g,'-').replace(/…/g,'...')
+    .replace(/[✓✔]/g,'OK').replace(/⚠/g,'!')
+    .replace(/[^\x09\x0A\x20-\x7E\u00A1-\u00FF]/g,'')
+    .replace(/[ \t]{2,}/g,' ')
+    .trim();
 }
 const KEY='mantcap_db_v3', DKEY='mantcap_draft_v3';
 let DB=null, SES=null, currentTab='dash', role='admin', charts=new Map();
@@ -712,7 +800,7 @@ function loadDB(){
   if(!DB.settings||typeof DB.settings!=='object') DB.settings={pinned:[]};
   if(!Array.isArray(DB.settings.pinned)) DB.settings.pinned=[];
   if(!Array.isArray(DB.users)) DB.users=[];
-  if(!Array.isArray(DB.runs)) DB.runs=[];   /* ← FIX v2.12: evita crash si runs es null/undefined */
+  if(!Array.isArray(DB.runs)) DB.runs=[];
   DB.runs.sort((a,b)=>new Date(b.date)-new Date(a.date));
   DB.runs.forEach(r=>{
     if(!r||typeof r!=='object') return;
@@ -787,7 +875,6 @@ const revAlerts=()=>alertsFor().filter(a=>a.reviewed);
 function setRole(r){role=r;$('#rtAdm').classList.toggle('on',r==='admin');$('#rtTec').classList.toggle('on',r==='tech');
   $('#fAdmin').classList.toggle('hidden',r!=='admin');$('#fTech').classList.toggle('hidden',r!=='tech');$('#lerr').classList.add('hidden');}
 function doLogin(){
-  /* FIX v2.12: no crashear si la BD aún no está lista */
   if(!DB||!Array.isArray(DB.users)){
     $('#lerr').textContent='El sistema se está iniciando. Espera unos segundos e intenta de nuevo.';
     $('#lerr').classList.remove('hidden');
@@ -810,21 +897,24 @@ function openApp(){
 }
 
 /* ================== NAVEGACIÓN ================== */
+/* s = etiqueta corta para la barra inferior del móvil */
 const ADMIN_TABS=[
  {id:'dash',l:'Resumen',ic:'dash'},{id:'charts',l:'Gráficas',ic:'chart'},{id:'qs',l:'Preguntas',ic:'list'},
- {id:'hist',l:'Historial',ic:'hist'},{id:'alerts',l:'Fuera de rango',ic:'alert',badge:1},{id:'set',l:'Ajustes',ic:'gear'}];
-const TECH_TABS=[{id:'form',l:'Nuevo recorrido',ic:'form'},{id:'myruns',l:'Mis recorridos',ic:'hist'}];
+ {id:'hist',l:'Historial',ic:'hist'},{id:'alerts',l:'Fuera de rango',s:'Alertas',ic:'alert',badge:1},{id:'set',l:'Ajustes',ic:'gear'}];
+const TECH_TABS=[{id:'form',l:'Nuevo recorrido',s:'Recorrido',ic:'form'},{id:'myruns',l:'Mis recorridos',ic:'hist'}];
 function buildNav(){
   const tabs=SES.role==='admin'?ADMIN_TABS:TECH_TABS;
-  const html=tabs.map(t=>`<button class="nitem ${t.id===currentTab?'on':''}" data-t="${t.id}" onclick="showTab('${t.id}')">${IC[t.ic]}<span>${t.l}</span>${t.badge?`<span class="cnt hidden" id="alertCnt"></span>`:''}</button>`).join('');
+  const mk=(t,lbl)=>`<button class="nitem ${t.id===currentTab?'on':''}" data-t="${t.id}" onclick="showTab('${t.id}')">${IC[t.ic]}<span>${lbl}</span>${t.badge?`<span class="cnt alertCnt hidden"></span>`:''}</button>`;
+  const html=tabs.map(t=>mk(t,t.l)).join('');
+  const mhtml=tabs.map(t=>mk(t,t.s||t.l)).join('');
   $('#sideNav').innerHTML=`<div class="brand"><span class="mark">M</span><b style="color:#fff">MantCAP</b></div><nav>${html}</nav>
     <div class="foot">${SES.role==='admin'?'Perfil: Administrador':'Perfil: Técnico'}<br>Ubicaciones: CAP · CPP<br>MantCAP <span class="ver">${APP_VERSION}</span></div>`;
-  $('#mobNav').innerHTML=html;
+  $('#mobNav').innerHTML=mhtml;
   updateBadges();
 }
 function updateBadges(){
-  const n=allPen().length;const b=$('#alertCnt');
-  if(b){b.textContent=n;b.classList.toggle('hidden',!n);}
+  const n=allPen().length;
+  $$('.alertCnt').forEach(b=>{b.textContent=n;b.classList.toggle('hidden',!n);});
 }
 function showTab(t){
   clearTimer();
@@ -834,6 +924,7 @@ function showTab(t){
   $('#pageTitle').textContent=titles[t]||'';
   charts.forEach(c=>c.destroy());charts.clear();
   ({dash:renderDash,charts:renderCharts,qs:renderQuestions,hist:renderHistory,alerts:renderAlerts,set:renderSettings,form:renderTechForm,myruns:renderMyRuns,users:renderUsers})[t]();
+  try{window.scrollTo(0,0);}catch(_){}
 }
 function setLoc(l){locFilter=l;showTab(currentTab);}
 function locBar(extra=''){
@@ -1271,14 +1362,16 @@ async function genTeamReport(){
         BAD=[209,60,60], LIGHT=[242,245,249], LINE=[227,232,239],
         OKC=[23,143,95], OKBG=[228,245,236], OKLN=[191,230,210], SKY=[125,193,255];
   const safe=s=>String(s).replace(/[^a-z0-9]+/gi,'_');
+  const P=pdfSafe;                                   /* texto seguro para PDF */
+  const PR=rows=>rows.map(r=>r.map(c=>P(c)));        /* filas seguras para tablas */
 
   doc.setFillColor(...PRI); doc.rect(0,0,PW,40,'F');
   doc.setFillColor(...SKY); doc.rect(0,40,PW,1.8,'F');
   doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(17);
-  doc.text(title,ML,16);
+  doc.text(P(title),ML,16);
   doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(205,224,248);
-  doc.text('MantCAP · Gestión de mantenimiento CAP / CPP',ML,23.5);
-  doc.text(`Generado: ${fmtDT(new Date().toISOString())}   ·   Por: ${SES.name}`,ML,31);
+  doc.text(P('MantCAP · Gestión de mantenimiento CAP / CPP'),ML,23.5);
+  doc.text(P(`Generado: ${fmtDT(new Date().toISOString())}   ·   Por: ${SES.name}`),ML,31);
   doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(255);
   doc.text('MantCAP',PW-ML,16,{align:'right'});
   doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(205,224,248);
@@ -1297,9 +1390,9 @@ async function genTeamReport(){
   meta.forEach(([k,v],i)=>{
     const cx=ML+7+(i%2)*(CW/2-2), cy=y+(i<2?7.5:17);
     doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...MUT);
-    doc.text(k,cx,cy);
+    doc.text(P(k),cx,cy);
     doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...INK);
-    doc.text(String(v),cx,cy+5);
+    doc.text(P(v),cx,cy+5);
   });
   y+=34;
 
@@ -1311,7 +1404,7 @@ async function genTeamReport(){
   });
   doc.autoTable({
     head:[['Equipo','Ubicación','Métricas','Hallazgos f. de rango']],
-    body:sumRows,startY:y,
+    body:PR(sumRows),startY:y,
     styles:{fontSize:8.5,cellPadding:2},
     headStyles:{fillColor:[230,238,250],textColor:PRI2},
     alternateRowStyles:{fillColor:[250,252,254]},
@@ -1337,16 +1430,16 @@ async function genTeamReport(){
     doc.setFillColor(...PRI);
     doc.roundedRect(ML,y,CW,10.5,1.5,1.5,'F');
     doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(11.5);
-    doc.text(`Equipo: ${sec}`,ML+4,y+7);
+    doc.text(P(`Equipo: ${sec}`),ML+4,y+7);
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(214,228,250);
-    doc.text(`${eqQs.length} métricas · ${imgs.length} gráficas · ${oor.length} hallazgos`,ML+CW-4,y+7,{align:'right'});
+    doc.text(P(`${eqQs.length} métricas · ${imgs.length} gráficas · ${oor.length} hallazgos`),ML+CW-4,y+7,{align:'right'});
     doc.setTextColor(...INK);
     y+=16;
 
     if(statRows.length){
       doc.autoTable({
         head:[['Métrica','Registros','Promedio','Mín','Máx','Último valor','Fuera de rango']],
-        body:statRows,startY:y,
+        body:PR(statRows),startY:y,
         styles:{fontSize:7.5,cellPadding:1.8},
         headStyles:{fillColor:[230,238,250],textColor:PRI2},
         alternateRowStyles:{fillColor:[250,252,254]},
@@ -1358,9 +1451,9 @@ async function genTeamReport(){
       const w=CW,h=w*(460/1000);
       if(y+h+13>PH()-14){doc.addPage();y=14;}
       doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...PRI2);
-      doc.text(`Comparativa · ${it.unit}`,ML,y);
+      doc.text(P(`Comparativa · ${it.unit}`),ML,y);
       doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...MUT);
-      doc.text(`(${it.nS} series · ${it.nR} recorridos)`,ML+CW,y,{align:'right'});
+      doc.text(P(`(${it.nS} series · ${it.nR} recorridos)`),ML+CW,y,{align:'right'});
       doc.setTextColor(...INK);
       doc.addImage(it.img,'PNG',ML,y+2.5,w,h);
       doc.setDrawColor(...LINE); doc.setLineWidth(0.3);
@@ -1373,7 +1466,7 @@ async function genTeamReport(){
       doc.text(`Hallazgos fuera de rango (${oor.length})`,ML,y); doc.setTextColor(...INK); y+=3;
       doc.autoTable({
         head:[['Fecha','Medición','Valor','Esperado','Avería / Nota']],
-        body:oor,startY:y,
+        body:PR(oor),startY:y,
         styles:{fontSize:7.5,cellPadding:1.8},headStyles:{fillColor:BAD},
         alternateRowStyles:{fillColor:[253,246,246]},
         columnStyles:{1:{cellWidth:52},4:{cellWidth:46}},margin:{left:ML,right:ML}});
@@ -1393,7 +1486,7 @@ async function genTeamReport(){
     if(y>PH()-45){doc.addPage();y=14;}
     doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...PRI);
     doc.text('Comentarios finales',ML,y); doc.setTextColor(...INK); y+=5.5;
-    const lines=doc.splitTextToSize(comments,CW-12);
+    const lines=doc.splitTextToSize(P(comments),CW-12);
     doc.setFillColor(...LIGHT); doc.setDrawColor(...LINE); doc.setLineWidth(0.3);
     doc.roundedRect(ML,y,CW,lines.length*5+8,2.5,2.5,'FD');
     doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...INK);
@@ -1406,7 +1499,7 @@ async function genTeamReport(){
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...MUT);
     doc.setDrawColor(...LINE); doc.setLineWidth(0.2);
     doc.line(ML,PH()-11,PW-ML,PH()-11);
-    doc.text(`MantCAP ${APP_VERSION} · Informe de análisis`,ML,PH()-7);
+    doc.text(P(`MantCAP ${APP_VERSION} · Informe de análisis`),ML,PH()-7);
     doc.text(`Página ${p} de ${tot}`,PW-ML,PH()-7,{align:'right'});
   }
 
@@ -1416,13 +1509,19 @@ async function genTeamReport(){
 }
 
 /* ================== ADMIN · PREGUNTAS ================== */
+/* El buscador NO se redibuja al escribir: solo se actualiza la lista (v2.13) */
 let qSearch='';
 function renderQuestions(){
+  $('#content').innerHTML=`${locBar(`<input id="qSearch" placeholder="Buscar pregunta…" value="${esc(qSearch)}" oninput="qSearch=this.value;renderQuestionsList()">`)}
+  <div class="card" id="qCard"></div>`;
+  renderQuestionsList();
+}
+function renderQuestionsList(){
+  const el=$('#qCard'); if(!el) return;
   const all=DB.questions.filter(q=>locFilter==='ALL'||q.loc===locFilter);
   const list=all.filter(q=>(q.text+' '+q.section).toLowerCase().includes(qSearch.toLowerCase()));
   const groups=[...new Set(list.map(q=>q.section))];
-  $('#content').innerHTML=`${locBar(`<input id="qSearch" placeholder="Buscar pregunta…" value="${esc(qSearch)}" oninput="qSearch=this.value;renderQuestions()">`)}
-  <div class="card"><div class="hd"><h3>Preguntas (${list.length})</h3>
+  el.innerHTML=`<div class="hd"><h3>Preguntas (${list.length})</h3>
     <span class="sp"><button class="btn btn-pri btn-sm" onclick="editQModal()">+ Nueva pregunta</button></span></div>
   <div style="padding:0 0 8px">
   ${groups.map(s=>`
@@ -1435,10 +1534,9 @@ function renderQuestions(){
         <button class="btn btn-gho btn-sm" onclick="editQModal('${q.id}')">Editar</button>
         <button class="btn ${q.active?'btn-gho':'btn-ok'} btn-sm" onclick="toggleQ('${q.id}')">${q.active?'Desactivar':'Activar'}</button>
       </td></tr>`).join('')}</table>`).join('')||'<div class="empty">Sin resultados</div>'}
-  </div></div>`;
-  const inp=$('#qSearch'); if(inp&&qSearch){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
+  </div>`;
 }
-function toggleQ(id){const q=getQ(id);q.active=!q.active;saveDB();toast(q.active?'Pregunta activada':'Pregunta desactivada','ok');renderQuestions();}
+function toggleQ(id){const q=getQ(id);q.active=!q.active;saveDB();toast(q.active?'Pregunta activada':'Pregunta desactivada','ok');renderQuestionsList();}
 function editQModal(id){
   const q=id?getQ(id):null;
   modal(`<div class="mh"><h3>${q?'Editar pregunta':'Nueva pregunta'}</h3><button class="x" onclick="closeModal()">×</button></div>
@@ -1470,6 +1568,7 @@ function saveQ(id){
 }
 
 /* ================== ADMIN · HISTORIAL (con filtro de fechas) ================== */
+/* El buscador NO se redibuja al escribir: solo se actualiza la tabla (v2.13) */
 let histSearch='';
 let histFrom='', histTo='', histQuick='all';
 function histQuickRange(k){
@@ -1485,10 +1584,7 @@ function histQuickRange(k){
 function renderHistory(){
   const hqc=k=>`<button class="chip ${histQuick===k?'on':''}" onclick="histQuickRange('${k}')">${{all:'Todo',today:'Hoy','7':'7 días','30':'30 días',month:'Este mes'}[k]}</button>`;
   const histLabel=(!histFrom&&!histTo)?'Todo el historial':`${histFrom?fmtD(histFrom):'inicio'} → ${histTo?fmtD(histTo):'hoy'}`;
-  const runs=runsFor()
-    .filter(r=>(!histFrom||r.date.slice(0,10)>=histFrom)&&(!histTo||r.date.slice(0,10)<=histTo))
-    .filter(r=>(r.techName+' '+r.ticket).toLowerCase().includes(histSearch.toLowerCase()));
-  $('#content').innerHTML=`${locBar(`<input id="hSearch" placeholder="Buscar técnico o ticket…" value="${esc(histSearch)}" oninput="histSearch=this.value;renderHistory()">`)}
+  $('#content').innerHTML=`${locBar(`<input id="hSearch" placeholder="Buscar técnico o ticket…" value="${esc(histSearch)}" oninput="histSearch=this.value;renderHistoryList()">`)}
   <div class="toolbar">
     <span style="font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px">Fechas:</span>
     <input type="date" value="${histFrom}" onchange="histFrom=this.value;histQuick='custom';renderHistory()">
@@ -1497,7 +1593,15 @@ function renderHistory(){
     ${hqc('all')}${hqc('today')}${hqc('7')}${hqc('30')}${hqc('month')}
     <span class="pill mut" style="margin-left:4px">📅 ${esc(histLabel)}</span>
   </div>
-  <div class="card"><div class="hd"><h3>Recorridos (${runs.length})</h3></div>
+  <div class="card" id="histCard"></div>`;
+  renderHistoryList();
+}
+function renderHistoryList(){
+  const el=$('#histCard'); if(!el) return;
+  const runs=runsFor()
+    .filter(r=>(!histFrom||r.date.slice(0,10)>=histFrom)&&(!histTo||r.date.slice(0,10)<=histTo))
+    .filter(r=>(r.techName+' '+r.ticket).toLowerCase().includes(histSearch.toLowerCase()));
+  el.innerHTML=`<div class="hd"><h3>Recorridos (${runs.length})</h3></div>
   ${runs.length?`<table class="tb"><tr><th>Fecha</th><th>Sitio</th><th>Técnico</th><th>Ticket</th><th>Duración</th><th>Alertas</th><th></th></tr>
   ${runs.map(r=>`<tr>
     <td>${fmtDT(r.date)}</td><td>${locBadge(r.loc)}</td><td>${esc(r.techName)}</td><td>${esc(r.ticket)}</td>
@@ -1507,9 +1611,7 @@ function renderHistory(){
       <button class="btn btn-gho btn-sm" onclick="openRunModal('${r.id}')">Ver</button>
       <button class="btn btn-gho btn-sm" onclick="exportRunPDF('${r.id}')">PDF</button>
       <button class="btn btn-bad btn-sm" onclick="delRun('${r.id}')">Eliminar</button>
-    </td></tr>`).join('')}</table>`:'<div class="empty">Sin recorridos en el filtro seleccionado</div>'}
-  </div>`;
-  const inp=$('#hSearch'); if(inp&&histSearch){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
+    </td></tr>`).join('')}</table>`:'<div class="empty">Sin recorridos en el filtro seleccionado</div>'}`;
 }
 function delRun(id){
   confirmModal('<p>¿Eliminar este recorrido definitivamente? Esta acción no se puede deshacer.</p>',
@@ -1546,21 +1648,22 @@ function openRunModal(id){
 function exportRunPDF(id){
   const r=DB.runs.find(x=>x.id===id); if(!r) return;
   const {jsPDF}=window.jspdf;
+  const P=pdfSafe;   /* v2.13: limpia ≥ ≤ → emojis… para que el PDF se lea bien */
   const doc=new jsPDF();
-  doc.setFontSize(16); doc.text('MantCAP · Reporte de recorrido',14,16);
+  doc.setFontSize(16); doc.text(P('MantCAP · Reporte de recorrido'),14,16);
   doc.setFontSize(10);
-  doc.text(`Ubicación: ${r.loc}    Fecha: ${fmtDT(r.date)}`,14,24);
-  doc.text(`Técnico: ${r.techName}    Ticket: ${r.ticket}`,14,29);
-  doc.text(`Duración del recorrido: ${fmtDur(runDur(r))}`,14,34);
+  doc.text(P(`Ubicación: ${r.loc}    Fecha: ${fmtDT(r.date)}`),14,24);
+  doc.text(P(`Técnico: ${r.techName}    Ticket: ${r.ticket}`),14,29);
+  doc.text(P(`Duración del recorrido: ${fmtDur(runDur(r))}`),14,34);
   const qs=DB.questions.filter(q=>r.answers&&r.answers[q.id]!=null&&r.answers[q.id]!=='');
   const oorMap=new Map((r.outOfRange||[]).map(a=>[a.qid,a]));
   const rows=qs.map(q=>{const a=oorMap.get(q.id);
     const rep=a?[(a.confirmed?'Avería reportada.':''),(a.note||'')].filter(Boolean).join(' '):'';
-    return [q.section,q.text,fmtVal(q,r.answers[q.id]),a?`Fuera de rango (${a.expected})`:'OK',rep];});
+    return [q.section,q.text,fmtVal(q,r.answers[q.id]),a?`Fuera de rango (${a.expected})`:'OK',rep].map(c=>P(c));});
   doc.autoTable({head:[['Sección','Medición','Valor','Estado','Avería / Reporte']],body:rows,startY:40,
     styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[14,95,216]},
-    columnStyles:{0:{cellWidth:26},1:{cellWidth:62},4:{cellWidth:36}},didParseCell:d=>{
-      if(d.section===1&&String(d.cell.raw).startsWith('Fuera')) d.cell.styles.textColor=[209,60,60];}});
+    columnStyles:{0:{cellWidth:26},1:{cellWidth:56},3:{cellWidth:36},4:{cellWidth:36}},didParseCell:d=>{
+      if(d.section==='body'&&d.column.index===3&&String(d.cell.raw).startsWith('Fuera')) d.cell.styles.textColor=[209,60,60];}});
   doc.save(`recorrido_${r.loc}_${r.date.slice(0,10)}.pdf`);
   toast('PDF generado','ok');
 }
@@ -1702,7 +1805,7 @@ function delUser(uu){
     ()=>{DB.users=DB.users.filter(x=>!(x.u===uu&&x.role==='tech'));saveDB();toast('Técnico eliminado','ok');renderUsers();},'Eliminar');
 }
 
-/* ================== ADMIN · AJUSTES (v2.11: estado conexión + sync manual) ================== */
+/* ================== ADMIN · AJUSTES (estado conexión + sync manual) ================== */
 function renderSettings(){
   const fbOK=window.FirebaseSync&&FirebaseSync.isConfigured();
   const enLinea=fbOK&&FirebaseSync.isOnline();
@@ -1737,7 +1840,8 @@ function renderSettings(){
     </div></div>
     <div class="card" style="grid-column:1/-1"><div class="hd"><h3>Acerca de</h3></div><div class="bd" style="font-size:13px;color:var(--mut);line-height:1.8">
       <b style="color:var(--ink)">MantCAP ${APP_VERSION}</b> · Gestión de mantenimiento CAP & CPP<br>
-      <b style="color:var(--ink)">v2.11:</b> sincronización manual con botón (admin y técnico), estado de conexión y última sincronización.<br>
+      <b style="color:var(--ink)">v2.13:</b> teclado estable al escribir, PDF con observaciones legibles y diseño móvil corregido.<br>
+      <b style="color:var(--ink)">v2.11–2.12:</b> sincronización manual, estado de conexión y correcciones de arranque.<br>
       <b style="color:var(--ink)">v2.10:</b> métricas en tarjetas agrupadas; PWA instalable.<br>
       <b style="color:var(--ink)">v2.8–2.9:</b> gestión de usuarios e historial con filtro de fechas.<br>
       <b style="color:var(--ink)">v2.7:</b> CPP con rangos oficiales actualizados.<br>
@@ -1747,7 +1851,7 @@ function renderSettings(){
   </div>`;
 }
 
-/* ================== SINCRONIZACIÓN MANUAL (v2.11) ================== */
+/* ================== SINCRONIZACIÓN MANUAL ================== */
 function doManualSync(){
   if(!window.FirebaseSync||typeof FirebaseSync.syncNow!=='function') return;
   if(!DB){ toast('Espera un momento y vuelve a intentar','bad'); return; }
@@ -1755,7 +1859,6 @@ function doManualSync(){
   FirebaseSync.syncNow(false).then(r=>{
     if(r&&r.msg) toast(r.msg,r.ok?'ok':'bad');
     if(r&&r.ok){
-      /* Recargar datos desde localStorage (sync pudo traer estado remoto) */
       loadDB();
       if(!DB){ toast('No se pudieron cargar los datos, reinicia la app','bad'); return; }
       const techs=(DB.users||[]).filter(u=>u.role==='tech'&&u.active!==false);
@@ -1767,6 +1870,7 @@ function doManualSync(){
       else if(currentTab==='hist') renderHistory();
       else if(currentTab==='alerts') renderAlerts();
       else if(currentTab==='users') renderUsers();
+      updateBadges();
     }
   }).catch(e=>{
     console.warn('Sync manual falló:',e);
@@ -1885,7 +1989,7 @@ function drawForm(){
   if(!formState.started){
     clearTimer();
     $('#content').innerHTML=`
-    <div class="card" style="max-width:540px;margin:36px auto">
+    <div class="card" style="max-width:540px;margin:24px auto">
       <div class="hd"><h3>▶ Iniciar recorrido</h3></div>
       <div class="bd">
         <div class="toolbar" style="margin-bottom:14px">
@@ -1913,13 +2017,15 @@ function drawForm(){
       <button class="btn btn-gho btn-sm ${formState.pausedAt?'hidden':''}" id="btnPause" title="Detener el cronómetro" onclick="timerPause()">⏸ Detener</button>
       <button class="btn btn-ok btn-sm ${formState.pausedAt?'':'hidden'}" id="btnResume" title="Reanudar el cronómetro" onclick="timerResume()">▶ Reanudar</button>
       <button class="btn btn-gho btn-sm" title="Reiniciar el cronómetro a cero" onclick="timerReset()">↺ Reiniciar</button>
-      <span style="flex:1"></span>
-      <button class="btn btn-gho btn-sm" onclick="toggleAllSecs(true)">Expandir todo</button>
-      <button class="btn btn-gho btn-sm" onclick="toggleAllSecs(false)">Colapsar todo</button>
-      <button class="btn btn-gho btn-sm" onclick="discardDraft()">Descartar borrador</button>
     </div>
     <div class="prog"><i style="width:${pct}%"></i></div>
     <div id="formCnt" style="font-size:11.5px;color:var(--mut);margin-top:4px">${done}/${req.length} requeridas · ${pct}%</div>
+  </div>
+  <div class="toolbar" style="margin:2px 0 6px">
+    <button class="btn btn-gho btn-sm" onclick="toggleAllSecs(true)">Expandir todo</button>
+    <button class="btn btn-gho btn-sm" onclick="toggleAllSecs(false)">Colapsar todo</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-gho btn-sm" onclick="discardDraft()">Descartar borrador</button>
   </div>
   <p style="font-size:12px;color:var(--mut);margin:2px 2px 10px">👆 Toca un equipo para desplegar los elementos a revisar.</p>
   ${secs.map((s,i)=>{
@@ -1991,13 +2097,30 @@ function updateSecHeaders(){
     if(el) el.innerHTML=secPills(s);
   });
 }
-function qInner(q){
+
+/* Banda de estado de una pregunta (fuera de rango / dentro de parámetros).
+   Vive en su propio contenedor para poder actualizarla SIN volver a dibujar
+   el campo donde se escribe → el teclado ya no se cierra (v2.13). */
+function bandHTML(q){
   const val=formState.answers[q.id];
   const ev=evalAnswer(q,val??'');
+  if(ev.oor){
+    return `<div class="oor"><b>⚠ Fuera de rango · esperado ${esc(ev.expected)}</b>
+      <div class="exp">Si hubo una avería, marca la casilla y describe lo sucedido. Esta descripción aparecerá en el informe del recorrido.</div>
+      <label><input type="checkbox" ${formState.conf[q.id]?'checked':''} onchange="setConf('${q.id}',this.checked)"> Se detectó una avería y fue reportada</label>
+      <textarea rows="2" placeholder="Describe la avería, a quién se reportó y las acciones tomadas…" oninput="setNote('${q.id}',this.value)">${esc(formState.notes[q.id]||'')}</textarea></div>`;
+  }
+  if(answered(q)){
+    return `<div class="okband">✓ Dentro de parámetros${rangeLabel(q)?' · '+rangeLabel(q):''}</div>`;
+  }
+  return '';
+}
+function qInner(q){
+  const val=formState.answers[q.id];
   let ctrl='';
   if(q.type==='number'){
-    ctrl=`<div class="in-num"><input type="number" step="any" value="${val??''}" placeholder="—"
-      oninput="setAns('${q.id}',this.value)" onchange="refreshQ('${q.id}')"><span class="u">${esc(q.unit||'')}</span></div>`;
+    ctrl=`<div class="in-num"><input type="number" inputmode="decimal" step="any" value="${val??''}" placeholder="—"
+      oninput="setAns('${q.id}',this.value)"><span class="u">${esc(q.unit||'')}</span></div>`;
   }else if(q.type==='text'){
     ctrl=`<textarea rows="2" style="width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;outline:none" placeholder="${esc(q.ph||'Escribe aquí…')}" oninput="setAns('${q.id}',this.value)">${esc(val||'')}</textarea>`;
   }else if(q.type==='multi'){
@@ -2005,28 +2128,26 @@ function qInner(q){
   }else{ /* select · boolean */
     ctrl=`<div class="opts">${(q.options||[]).map(o=>`<button class="opt ${val===o.label?'on':''}" onclick="setAns('${q.id}','${esc(o.label)}')">${esc(o.label)}</button>`).join('')}</div>`;
   }
-  let band='';
-  if(ev.oor){
-    band=`<div class="oor"><b>⚠ Fuera de rango · esperado ${esc(ev.expected)}</b>
-      <div class="exp">Si hubo una avería, marca la casilla y describe lo sucedido. Esta descripción aparecerá en el informe del recorrido.</div>
-      <label><input type="checkbox" ${formState.conf[q.id]?'checked':''} onchange="setConf('${q.id}',this.checked)"> Se detectó una avería y fue reportada</label>
-      <textarea rows="2" placeholder="Describe la avería, a quién se reportó y las acciones tomadas…" oninput="setNote('${q.id}',this.value)">${esc(formState.notes[q.id]||'')}</textarea></div>`;
-  }else if(answered(q)){
-    band=`<div class="okband">✓ Dentro de parámetros${rangeLabel(q)?' · '+rangeLabel(q):''}</div>`;
-  }
-  return `<div class="qt">${esc(q.text)}${q.required?'<span class="req">*</span>':''}${rangeLabel(q)?`<span class="meta">Rango: ${rangeLabel(q)}</span>`:''}</div>${ctrl}${band}`;
+  return `<div class="qt">${esc(q.text)}${q.required?'<span class="req">*</span>':''}${rangeLabel(q)?`<span class="meta">Rango: ${rangeLabel(q)}</span>`:''}</div>${ctrl}<div id="band_${q.id}">${bandHTML(q)}</div>`;
 }
 function refreshQ(qid){const el=document.getElementById('q_'+qid);if(el)el.innerHTML=qInner(getQ(qid));}
+function refreshBand(qid){
+  const q=getQ(qid), el=document.getElementById('band_'+qid);
+  if(q&&el) el.innerHTML=bandHTML(q);
+}
 function setAns(qid,val){
   formState.answers[qid]=val;
-  saveDraft();updateFormProgress();updateSecHeaders();
+  saveDraft();
   const q=getQ(qid);
-  if(q&&q.type!=='number') refreshQ(qid);
+  /* Botones (select/boolean): se redibuja la pregunta.
+     Campos de escritura (número/texto): SOLO se actualiza la banda de estado. */
+  if(q&&(q.type==='select'||q.type==='boolean')) refreshQ(qid); else refreshBand(qid);
+  updateFormProgress();
 }
 function toggleMulti(qid,label){
   const cur=formState.answers[qid]||[];
   formState.answers[qid]=cur.includes(label)?cur.filter(x=>x!==label):[...cur,label];
-  saveDraft();refreshQ(qid);updateFormProgress();updateSecHeaders();
+  saveDraft();refreshQ(qid);updateFormProgress();
 }
 function setConf(qid,v){formState.conf[qid]=v;saveDraft();}
 function setNote(qid,v){formState.notes[qid]=v;saveDraft();}
@@ -2072,7 +2193,7 @@ function confirmFinish(){
   updateBadges();showTab('myruns');
 }
 
-/* ================== TÉCNICO · MIS RECORRIDOS (v2.11: estado + sync manual) ================== */
+/* ================== TÉCNICO · MIS RECORRIDOS (estado + sync manual) ================== */
 function renderMyRuns(){
   const runs=DB.runs.filter(r=>r.techName===SES.name);
   const fbOK=window.FirebaseSync&&FirebaseSync.isConfigured();
@@ -2109,14 +2230,13 @@ async function init(){
     try{
       await FirebaseSync.init();
       const remote=await FirebaseSync.pull();
-      /* FIX v2.12: solo aceptar datos remotos con estructura válida (no pisar lo local con basura) */
+      /* Solo aceptar datos remotos con estructura válida */
       if(remote&&typeof remote==='object'&&Array.isArray(remote.questions)&&Array.isArray(remote.users)){
         localStorage.setItem(KEY,JSON.stringify(remote));
       }
     }catch(e){ console.warn('Firebase no disponible, usando datos locales',e); }
   }
   loadDB();
-  /* FIX v2.12: no seguir si la BD no se pudo inicializar */
   if(!DB||!Array.isArray(DB.users)){ console.error('No se pudo inicializar la base de datos'); return; }
   /* Lista de login: solo técnicos activos */
   const lt=$('#lt');

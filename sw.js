@@ -8,7 +8,7 @@
    - Las llamadas a Firebase (datos/auth) NUNCA se cachean.
    Al publicar una versión nueva, sube el número de CACHE.
    ================================================================ */
-const CACHE='mantcap-v9';
+const CACHE='mantcap-v10';
 const PRECACHE=[
   './',
   './index.html',

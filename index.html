@@ -94,6 +94,24 @@ h1,h2,h3{font-weight:700}
 .g-dash{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
 @media(max-width:1200px){.g-dash{grid-template-columns:1fr}}
 .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ---------- CATEGORÍAS DE PREGUNTAS ---------- */
+.sec-row-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:#f8fafc;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
+.sec-row-hd b{font-size:13px}
+.cnt-mini{font-size:11.5px;color:var(--mut);font-weight:500}
+.sec-row-act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+
+/* ---------- ALERTAS: tabla (por defecto) / tarjetas (pantallas angostas o bajas) ---------- */
+.al-cards{display:none}
+.al{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.al:last-child{margin-bottom:0}
+.al-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.al-date{font-size:12.5px;color:var(--mut);font-weight:600}
+.al-sec{font-size:13px;margin-bottom:2px}
+.al-txt{font-size:12.5px;color:var(--mut);margin-bottom:8px}
+.al-meta{display:flex;flex-direction:column;gap:4px;font-size:12.5px;margin-bottom:6px}
+.al-note{font-size:12px;color:var(--mut);background:#f6f8fb;border-radius:8px;padding:6px 9px;margin-bottom:6px}
+.al-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--rad);box-shadow:var(--shadow);min-width:0}
 .card .hd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .card .hd h3{font-size:14px}
@@ -226,6 +244,11 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
   table.tb{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
   .tb th,.tb td{padding:8px 9px;font-size:12.5px}
 
+  /* Mediciones fuera de rango: tarjetas en vez de tabla ancha (evita el desborde) */
+  .al-table{display:none}
+  .al-cards{display:block}
+  .card>.al-cards{padding:12px}
+
   /* Campos a 16px: evita el zoom automático de iOS al enfocar */
   input,select,textarea{font-size:16px!important}
   .in-num{max-width:100%}
@@ -299,7 +322,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
       <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
     </div>
-    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.15.1</b></div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.16</b></div>
   </div>
 </div>
 
@@ -325,6 +348,11 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
 <script>
 /* ================================================================
    MantCAP · PWA de gestión de mantenimiento
+   v2.16 — Categorías de preguntas: crear, renombrar, activar/desactivar y
+           eliminar (Preguntas → + Nueva categoría / Renombrar). Las
+           preguntas de opción única ahora también se editan sus opciones.
+           Mediciones fuera de rango: en pantallas angostas u horizontales
+           se muestran como tarjetas en vez de una tabla que se desborda.
    v2.15 — Limpieza de duplicadas sin aviso, pantalla vertical y horizontal,
            y tabla "Últimos recorridos" del Resumen ya no se corta en PC.
    v2.14 — Preguntas duplicadas: se corrige la migración que las recreaba
@@ -348,7 +376,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
    v2.5–2.6 — Firebase, informes, gráficas comparativas
    v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
    ================================================================ */
-const APP_VERSION='v2.15.1';
+const APP_VERSION='v2.16';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -1576,35 +1604,157 @@ async function genTeamReport(){
   toast(`📄 Informe generado · ${secs.length} equipo${secs.length>1?'s':''}`,'ok');
 }
 
-/* ================== ADMIN · PREGUNTAS ================== */
-/* El buscador NO se redibuja al escribir: solo se actualiza la lista (v2.13) */
+/* ================== ADMIN · PREGUNTAS Y CATEGORÍAS ================== */
+/* El buscador NO se redibuja al escribir: solo se actualiza la lista (v2.13).
+   v2.16: las categorías (UPS, Subestación, etc.) se pueden crear, renombrar,
+   activar/desactivar y eliminar; las preguntas admiten opciones propias. */
 let qSearch='';
+let secCache=[];   /* categorías mostradas en pantalla (las usan los botones) */
+const TYPE_LBL={number:'Número',select:'Una opción',boolean:'Sí / No',multi:'Varias opciones',text:'Texto libre'};
+
+/* Categorías vacías (sin preguntas todavía). Viven en DB.settings para sincronizarse con la nube. */
+const extraSecs=()=>{
+  if(!DB.settings) DB.settings={pinned:[]};
+  if(!Array.isArray(DB.settings.extraSections)) DB.settings.extraSections=[];
+  return DB.settings.extraSections;
+};
+const sectionExists=(loc,name)=>{
+  const n=String(name).trim().toLowerCase();
+  return DB.questions.some(q=>q.loc===loc&&String(q.section).trim().toLowerCase()===n)
+      ||extraSecs().some(e=>e.loc===loc&&String(e.name).trim().toLowerCase()===n);
+};
+/* Si una categoría se queda sin preguntas, se conserva como categoría vacía */
+function keepSection(loc,name){
+  if(!name) return;
+  if(DB.questions.some(q=>q.loc===loc&&q.section===name)) return;
+  if(extraSecs().some(e=>e.loc===loc&&e.name===name)) return;
+  extraSecs().push({loc,name});
+}
+
 function renderQuestions(){
-  $('#content').innerHTML=`${locBar(`<input id="qSearch" placeholder="Buscar pregunta…" value="${esc(qSearch)}" oninput="qSearch=this.value;renderQuestionsList()">`)}
+  $('#content').innerHTML=`${locBar(`<input id="qSearch" placeholder="Buscar pregunta o categoría…" value="${esc(qSearch)}" oninput="qSearch=this.value;renderQuestionsList()">`)}
   <div class="card" id="qCard"></div>`;
   renderQuestionsList();
 }
 function renderQuestionsList(){
   const el=$('#qCard'); if(!el) return;
+  const term=qSearch.toLowerCase();
   const all=DB.questions.filter(q=>locFilter==='ALL'||q.loc===locFilter);
-  const list=all.filter(q=>(q.text+' '+q.section).toLowerCase().includes(qSearch.toLowerCase()));
-  const groups=[...new Set(list.map(q=>q.section))];
-  el.innerHTML=`<div class="hd"><h3>Preguntas (${list.length})</h3>
-    <span class="sp"><button class="btn btn-pri btn-sm" onclick="editQModal()">+ Nueva pregunta</button></span></div>
+  const list=all.filter(q=>(q.text+' '+q.section).toLowerCase().includes(term));
+  const secs=[], idx=new Map();
+  const add=(loc,name)=>{
+    const k=loc+'||'+name;
+    if(!idx.has(k)){idx.set(k,secs.length);secs.push({loc,name,qs:[]});}
+    return secs[idx.get(k)];
+  };
+  list.forEach(q=>add(q.loc,q.section).qs.push(q));
+  extraSecs().forEach(e=>{
+    if(locFilter!=='ALL'&&e.loc!==locFilter) return;
+    if(term&&!String(e.name).toLowerCase().includes(term)) return;
+    add(e.loc,e.name);
+  });
+  secCache=secs.map(s=>({loc:s.loc,name:s.name}));
+
+  el.innerHTML=`<div class="hd"><h3>Preguntas (${list.length}) · Categorías (${secs.length})</h3>
+    <span class="sp">
+      <button class="btn btn-gho btn-sm" onclick="secModal()">+ Nueva categoría</button>
+      <button class="btn btn-pri btn-sm" onclick="editQModal()">+ Nueva pregunta</button>
+    </span></div>
   <div style="padding:0 0 8px">
-  ${groups.map(s=>`
-    <div style="padding:10px 16px;background:#f8fafc;font-weight:700;font-size:12.5px;border-bottom:1px solid var(--line);border-top:1px solid var(--line)">${esc(s)}</div>
-    <table class="tb">${list.filter(q=>q.section===s).map(q=>`<tr>
-      <td>${esc(q.text)}${q.active?'':' <span class="pill mut">inactiva</span>'}<br>
-        <span style="font-size:11.5px;color:var(--mut)">${q.type}${q.unit?' · '+esc(q.unit):''}${rangeLabel(q)?' · '+rangeLabel(q):''}</span></td>
-      <td>${locBadge(q.loc)}</td>
-      <td style="text-align:right;white-space:nowrap">
-        <button class="btn btn-gho btn-sm" onclick="editQModal('${q.id}')">Editar</button>
-        <button class="btn ${q.active?'btn-gho':'btn-ok'} btn-sm" onclick="toggleQ('${q.id}')">${q.active?'Desactivar':'Activar'}</button>
-        <button class="btn btn-bad btn-sm" onclick="delQ('${q.id}')">Eliminar</button>
-      </td></tr>`).join('')}</table>`).join('')||'<div class="empty">Sin resultados</div>'}
+  ${secs.map((s,i)=>{
+    const nAct=s.qs.filter(q=>q.active).length;
+    return `<div>
+      <div class="sec-row-hd">
+        <b>${esc(s.name)}</b> ${locBadge(s.loc)}
+        <span class="cnt-mini">${s.qs.length} pregunta${s.qs.length===1?'':'s'}${s.qs.length&&!nAct?' · todas inactivas':''}</span>
+        <span class="sec-row-act">
+          <button class="btn btn-gho btn-sm" onclick="editQModal(null,${i})">+ Pregunta</button>
+          <button class="btn btn-gho btn-sm" onclick="secModal(${i})">Renombrar</button>
+          ${s.qs.length?`<button class="btn btn-gho btn-sm" onclick="secToggle(${i})">${nAct?'Desactivar todas':'Activar todas'}</button>`:''}
+          <button class="btn btn-bad btn-sm" onclick="secDelete(${i})">Eliminar</button>
+        </span>
+      </div>
+      ${s.qs.length?`<table class="tb">${s.qs.map(q=>`<tr>
+        <td>${esc(q.text)}${q.active?'':' <span class="pill mut">inactiva</span>'}<br>
+          <span style="font-size:11.5px;color:var(--mut)">${TYPE_LBL[q.type]||q.type}${q.unit?' · '+esc(q.unit):''}${rangeLabel(q)?' · '+rangeLabel(q):''}</span></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-gho btn-sm" onclick="editQModal('${q.id}')">Editar</button>
+          <button class="btn ${q.active?'btn-gho':'btn-ok'} btn-sm" onclick="toggleQ('${q.id}')">${q.active?'Desactivar':'Activar'}</button>
+          <button class="btn btn-bad btn-sm" onclick="delQ('${q.id}')">Eliminar</button>
+        </td></tr>`).join('')}</table>`
+      :`<div class="empty" style="padding:14px">Categoría vacía. Agrega la primera pregunta con «+ Pregunta».</div>`}
+    </div>`;
+  }).join('')||'<div class="empty">Sin resultados</div>'}
   </div>`;
 }
+
+/* ---------- Categorías ---------- */
+function secModal(idx){
+  const s=(idx!=null&&secCache[idx])?secCache[idx]:null;
+  const defLoc=s?s.loc:(locFilter!=='ALL'?locFilter:'CAP');
+  const nq=s?DB.questions.filter(q=>q.loc===s.loc&&q.section===s.name).length:0;
+  modal(`<div class="mh"><h3>${s?'Renombrar categoría':'Nueva categoría'}</h3><button class="x" onclick="closeModal()">×</button></div>
+  <div class="mb">
+    <div class="fld"><label>Ubicación</label>
+      <select id="scLoc" ${s?'disabled':''}>${['CAP','CPP'].map(l=>`<option ${l===defLoc?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="fld"><label>Nombre de la categoría *</label>
+      <input id="scName" value="${esc(s?s.name:'')}" placeholder="Ej: Baterías, Tableros, Extintores…" autocomplete="off"
+        onkeydown="if(event.key==='Enter')saveSection(${s?idx:-1})"></div>
+    ${s?`<p style="font-size:12.5px;color:var(--mut)">El cambio se aplica a sus ${nq} pregunta${nq===1?'':'s'}. Si el texto de una pregunta empieza con el nombre anterior (por ejemplo «${esc(s.name)}. Temperatura»), también se actualiza.</p>`
+       :`<p style="font-size:12.5px;color:var(--mut)">La categoría se crea vacía. Después agrégale preguntas con «+ Pregunta».</p>`}
+  </div>
+  <div class="mf"><button class="btn btn-gho" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveSection(${s?idx:-1})">Guardar</button></div>`);
+  setTimeout(()=>{const i=$('#scName');if(i){i.focus();i.select();}},80);
+}
+function saveSection(idx){
+  const name=$('#scName').value.trim();
+  if(!name){toast('Escribe el nombre de la categoría','bad');return;}
+  if(idx>=0){
+    const s=secCache[idx]; if(!s){closeModal();return;}
+    const oldName=s.name, loc=s.loc;
+    if(name===oldName){closeModal();return;}
+    if(name.toLowerCase()!==oldName.toLowerCase()&&sectionExists(loc,name)){
+      toast('Ya existe una categoría con ese nombre en '+loc,'bad');return;
+    }
+    DB.questions.forEach(q=>{
+      if(q.loc===loc&&q.section===oldName){
+        q.section=name;
+        if(q.text.startsWith(oldName+'. ')) q.text=name+'. '+q.text.slice(oldName.length+2);
+      }
+    });
+    extraSecs().forEach(e=>{ if(e.loc===loc&&e.name===oldName) e.name=name; });
+    saveDB();toast('Categoría renombrada','ok');
+  }else{
+    const loc=$('#scLoc').value;
+    if(sectionExists(loc,name)){toast('Ya existe esa categoría en '+loc,'bad');return;}
+    extraSecs().push({loc,name});
+    saveDB();toast('Categoría creada','ok');
+  }
+  closeModal();renderQuestionsList();
+}
+function secToggle(i){
+  const s=secCache[i]; if(!s) return;
+  const qs=DB.questions.filter(q=>q.loc===s.loc&&q.section===s.name);
+  const anyActive=qs.some(q=>q.active);
+  qs.forEach(q=>{q.active=!anyActive;});
+  saveDB();toast(anyActive?'Categoría desactivada':'Categoría activada','ok');renderQuestionsList();
+}
+function secDelete(i){
+  const s=secCache[i]; if(!s) return;
+  const qs=DB.questions.filter(q=>q.loc===s.loc&&q.section===s.name);
+  const ids=new Set(qs.map(q=>q.id));
+  const nRuns=DB.runs.filter(r=>r.answers&&Object.keys(r.answers).some(k=>ids.has(k)&&r.answers[k]!=='')).length;
+  confirmModal(`<p>¿Eliminar la categoría <b>${esc(s.name)}</b> (${esc(s.loc)})?</p>
+    ${qs.length?`<p style="margin-top:8px;color:var(--warn);font-size:12.5px">Se eliminarán también sus ${qs.length} pregunta${qs.length===1?'':'s'}.${nRuns?` Hay respuestas en ${nRuns} recorrido(s): conservan el dato guardado, pero dejarán de mostrarse en el formulario y en las gráficas.`:''} Si solo quieres ocultarla, usa «Desactivar todas».</p>`:''}`,
+    ()=>{
+      DB.questions=DB.questions.filter(q=>!ids.has(q.id));
+      DB.deletedQ=[...new Set([...(DB.deletedQ||[]),...ids])];
+      DB.settings.extraSections=extraSecs().filter(e=>!(e.loc===s.loc&&e.name===s.name));
+      saveDB();toast('Categoría eliminada','ok');renderQuestionsList();
+    },'Eliminar');
+}
+
+/* ---------- Preguntas ---------- */
 function toggleQ(id){const q=getQ(id);q.active=!q.active;saveDB();toast(q.active?'Pregunta activada':'Pregunta desactivada','ok');renderQuestionsList();}
 function delQ(id){
   const q=getQ(id); if(!q) return;
@@ -1615,38 +1765,77 @@ function delQ(id){
     ()=>{
       DB.questions=DB.questions.filter(x=>x.id!==id);
       DB.deletedQ=[...new Set([...(DB.deletedQ||[]),id])];
+      keepSection(q.loc,q.section);
       saveDB();toast('Pregunta eliminada','ok');renderQuestionsList();
     },'Eliminar');
 }
-function editQModal(id){
+function eqTypeChange(){
+  const t=$('#eqType').value;
+  $('#eqNum').style.display=t==='number'?'':'none';
+  $('#eqOptsBox').style.display=(t==='select'||t==='multi'||t==='boolean')?'':'none';
+  if(t==='boolean'&&!$('#eqOpts').value.trim()) $('#eqOpts').value='Sí\n!No';
+}
+function editQModal(id,secIdx){
   const q=id?getQ(id):null;
+  const pre=(secIdx!=null&&secCache[secIdx])?secCache[secIdx]:null;
+  const defLoc=q?q.loc:(pre?pre.loc:(locFilter!=='ALL'?locFilter:'CAP'));
+  const defSec=q?q.section:(pre?pre.name:'');
+  const allSecs=[...new Set([...DB.questions.map(x=>x.section),...extraSecs().map(e=>e.name)])].sort();
+  const optsTxt=(q&&q.options)?q.options.map(o=>(o.normal?'':'!')+o.label).join('\n'):'';
+  const type=q?q.type:'number';
   modal(`<div class="mh"><h3>${q?'Editar pregunta':'Nueva pregunta'}</h3><button class="x" onclick="closeModal()">×</button></div>
   <div class="mb">
-    <div class="fld"><label>Ubicación</label><select id="eqLoc"><option ${q&&q.loc==='CAP'?'selected':''}>CAP</option><option ${q&&q.loc==='CPP'?'selected':''}>CPP</option></select></div>
-    <div class="fld"><label>Sección</label><input id="eqSec" value="${esc(q?.section||'')}"></div>
+    <div class="fld"><label>Ubicación</label>
+      <select id="eqLoc">${['CAP','CPP'].map(l=>`<option ${l===defLoc?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="fld"><label>Categoría (elige una existente o escribe una nueva)</label>
+      <input id="eqSec" list="eqSecList" value="${esc(defSec)}" autocomplete="off">
+      <datalist id="eqSecList">${allSecs.map(s=>`<option value="${esc(s)}"></option>`).join('')}</datalist></div>
     <div class="fld"><label>Texto de la pregunta</label><input id="eqTxt" value="${esc(q?.text||'')}"></div>
-    <div class="grid g3">
-      <div class="fld"><label>Tipo</label><select id="eqType" ${q?'disabled':''}>${['number','select','boolean','multi','text'].map(t=>`<option ${q&&q.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="fld"><label>Unidad</label><input id="eqUnit" value="${esc(q?.unit||'')}"></div>
+    <div class="fld"><label>Tipo de respuesta</label>
+      <select id="eqType" ${q?'disabled':''} onchange="eqTypeChange()">
+        ${Object.keys(TYPE_LBL).map(t=>`<option value="${t}" ${t===type?'selected':''}>${TYPE_LBL[t]}</option>`).join('')}
+      </select></div>
+    <div id="eqNum"><div class="grid g2">
+      <div class="fld"><label>Unidad</label><input id="eqUnit" value="${esc(q?.unit||'')}" placeholder="Ej: A, kW, °C"></div>
       <div class="fld"><label>Mín / Máx (opcional)</label><div style="display:flex;gap:6px"><input id="eqMin" type="number" step="any" value="${q?.min??''}"><input id="eqMax" type="number" step="any" value="${q?.max??''}"></div></div>
-    </div>
+    </div></div>
+    <div class="fld" id="eqOptsBox"><label>Opciones de respuesta (una por línea). Escribe ! al inicio de las que cuenten como fuera de rango.</label>
+      <textarea id="eqOpts" rows="4" placeholder="Normal&#10;!Con novedad">${esc(optsTxt)}</textarea></div>
   </div>
   <div class="mf"><button class="btn btn-gho" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveQ('${id||''}')">Guardar</button></div>`);
+  eqTypeChange();
 }
 function saveQ(id){
   const text=$('#eqTxt').value.trim();
+  const section=$('#eqSec').value.trim();
   if(!text){toast('Escribe el texto de la pregunta','bad');return;}
+  if(!section){toast('Elige o escribe una categoría','bad');return;}
+  const type=id?getQ(id).type:$('#eqType').value;
   const min=$('#eqMin').value===''?null:+$('#eqMin').value, max=$('#eqMax').value===''?null:+$('#eqMax').value;
+  let options=null;
+  if(type==='select'||type==='multi'||type==='boolean'){
+    const prev=id?(getQ(id).options||[]):[];
+    options=$('#eqOpts').value.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>{
+      const bad=s.startsWith('!'); const label=(bad?s.slice(1):s).trim();
+      const old=prev.find(o=>o.label===label);
+      return {label,normal:!bad,w:old?old.w:null};
+    }).filter(o=>o.label);
+    if(options.length<2){toast('Agrega al menos 2 opciones (una por línea)','bad');return;}
+    if(!options.some(o=>o.normal)){toast('Al menos una opción debe ser la normal (sin !)','bad');return;}
+  }
   if(id){
-    const q=getQ(id);
-    Object.assign(q,{loc:$('#eqLoc').value,section:$('#eqSec').value.trim()||q.section,text,unit:$('#eqUnit').value.trim(),min,max});
+    const q=getQ(id), oldLoc=q.loc, oldSec=q.section;
+    Object.assign(q,{loc:$('#eqLoc').value,section,text,unit:$('#eqUnit').value.trim(),min,max});
+    if(options) q.options=options;
+    if(oldLoc!==q.loc||oldSec!==q.section) keepSection(oldLoc,oldSec);
   }else{
     const loc=$('#eqLoc').value;
-    DB.questions.push({id:loc.toLowerCase()+(DB.qseq++),loc,section:$('#eqSec').value.trim()||'General',text,
-      type:$('#eqType').value,unit:$('#eqUnit').value.trim(),min,max,required:true,options:[],ph:'',hm:'',active:true});
+    DB.questions.push({id:loc.toLowerCase()+(DB.qseq++),loc,section,text,
+      type,unit:$('#eqUnit').value.trim(),min,max,required:true,options:options||[],ph:'',hm:'',active:true});
   }
-  saveDB();closeModal();toast('Pregunta guardada','ok');renderQuestions();
+  saveDB();closeModal();toast('Pregunta guardada','ok');renderQuestionsList();
 }
+
 
 /* ================== ADMIN · HISTORIAL (con filtro de fechas) ================== */
 /* El buscador NO se redibuja al escribir: solo se actualiza la tabla (v2.13) */
@@ -1754,6 +1943,10 @@ let alertView='pen';
 function renderAlerts(){
   const list=alertView==='pen'?pendAlerts():alertView==='rev'?revAlerts():alertsFor();
   const qc=(k,l,n)=>`<button class="chip ${alertView===k?'on':''}" onclick="alertView='${k}';renderAlerts()">${l} (${n})</button>`;
+  const acts=a=>a.reviewed
+    ?`<button class="btn btn-gho btn-sm" onclick="reviewAlert('${a.runId}','${a.qid}')">Editar nota</button>
+      <button class="btn btn-gho btn-sm" onclick="reopenAlert('${a.runId}','${a.qid}')">Reabrir</button>`
+    :`<button class="btn btn-ok btn-sm" onclick="reviewAlert('${a.runId}','${a.qid}')">Revisada</button>`;
   $('#content').innerHTML=`${locBar()}
   <div class="toolbar">
     ${qc('pen','Pendientes',pendAlerts().length)}
@@ -1761,7 +1954,8 @@ function renderAlerts(){
     ${qc('all','Todas',alertsFor().length)}
   </div>
   <div class="card">
-  ${list.length?`<table class="tb"><tr><th>Fecha</th><th>Sitio</th><th>Medición</th><th>Valor</th><th>Esperado</th><th>Avería reportada</th>${alertView!=='pen'?'<th>Solución / Estado</th>':''}<th></th></tr>
+  ${list.length?`
+  <div class="tscroll al-table"><table class="tb"><tr><th>Fecha</th><th>Sitio</th><th>Medición</th><th>Valor</th><th>Esperado</th><th>Avería reportada</th>${alertView!=='pen'?'<th>Solución / Estado</th>':''}<th></th></tr>
   ${list.map(a=>`<tr>
     <td>${fmtD(a.date)}</td><td>${locBadge(a.loc)}</td>
     <td><b>${esc(a.section)}</b><br><span style="font-size:12px">${esc(a.qtext)}</span></td>
@@ -1769,12 +1963,20 @@ function renderAlerts(){
     <td style="font-size:12px">${esc(a.expected)}</td>
     <td>${a.confirmed?'<span class="pill ok">Sí</span>':'<span class="pill pen">No</span>'}${a.note?`<br><span style="font-size:11px;color:var(--mut)">📝 ${esc(a.note)}</span>`:''}</td>
     ${alertView!=='pen'?`<td style="font-size:12px;max-width:220px">${a.reviewNote?esc(a.reviewNote):'<span style="color:var(--mut)">—</span>'}</td>`:''}
-    <td style="text-align:right;white-space:nowrap">
-      ${a.reviewed
-        ?`<button class="btn btn-gho btn-sm" onclick="reviewAlert('${a.runId}','${a.qid}')">Editar nota</button>
-          <button class="btn btn-gho btn-sm" onclick="reopenAlert('${a.runId}','${a.qid}')">Reabrir</button>`
-        :`<button class="btn btn-ok btn-sm" onclick="reviewAlert('${a.runId}','${a.qid}')">Revisada</button>`}
-    </td></tr>`).join('')}</table>`:'<div class="empty">'+(alertView==='pen'?'Sin alertas pendientes 🎉':alertView==='rev'?'Aún no hay alertas revisadas':'Sin alertas por aquí 🎉')+'</div>'}
+    <td style="text-align:right;white-space:nowrap">${acts(a)}</td></tr>`).join('')}</table></div>
+  <div class="al-cards">
+  ${list.map(a=>`<div class="al">
+    <div class="al-top"><span class="al-date">${fmtD(a.date)}</span>${locBadge(a.loc)}<span class="pill bad">${esc(a.value)}</span></div>
+    <div class="al-sec"><b>${esc(a.section)}</b></div>
+    <div class="al-txt">${esc(a.qtext)}</div>
+    <div class="al-meta"><span>Esperado: <b>${esc(a.expected)}</b></span>
+      <span>Avería reportada: ${a.confirmed?'<span class="pill ok">Sí</span>':'<span class="pill pen">No</span>'}</span></div>
+    ${a.note?`<div class="al-note">📝 ${esc(a.note)}</div>`:''}
+    ${(alertView!=='pen'&&a.reviewNote)?`<div class="al-note">✅ Solución: ${esc(a.reviewNote)}</div>`:''}
+    <div class="al-act">${acts(a)}</div>
+  </div>`).join('')}
+  </div>`
+  :'<div class="empty">'+(alertView==='pen'?'Sin alertas pendientes 🎉':alertView==='rev'?'Aún no hay alertas revisadas':'Sin alertas por aquí 🎉')+'</div>'}
   </div>`;
 }
 function findAlert(runId,qid){const r=DB.runs.find(x=>x.id===runId);return {r,a:r?.outOfRange?.find(x=>x.qid===qid)};}
@@ -1921,6 +2123,7 @@ function renderSettings(){
     </div></div>
     <div class="card" style="grid-column:1/-1"><div class="hd"><h3>Acerca de</h3></div><div class="bd" style="font-size:13px;color:var(--mut);line-height:1.8">
       <b style="color:var(--ink)">MantCAP ${APP_VERSION}</b> · Gestión de mantenimiento CAP & CPP<br>
+      <b style="color:var(--ink)">v2.16:</b> categorías de preguntas editables (crear, renombrar, eliminar) y alertas legibles en horizontal.<br>
       <b style="color:var(--ink)">v2.15:</b> la app se adapta a pantalla vertical y horizontal; resumen sin cortes en PC.<br>
       <b style="color:var(--ink)">v2.14:</b> limpieza automática de preguntas duplicadas y botón para eliminar preguntas.<br>
       <b style="color:var(--ink)">v2.13:</b> teclado estable al escribir, PDF con observaciones legibles y diseño móvil corregido.<br>

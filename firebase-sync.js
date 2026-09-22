@@ -11,12 +11,19 @@
      conflictos por fecha (gana el cambio más reciente).
    - v3.2: las preguntas eliminadas en la app (DB.deletedQ) también
      se borran de Firestore, para que no vuelvan a aparecer.
+   - v3.3: doPush() ya NO reescribe todas las preguntas y todos los
+     recorridos en cada sincronización. Ahora guarda una huella
+     (fingerprint) de lo último subido y solo envía a Firestore los
+     documentos que realmente cambiaron desde el push anterior. Esto
+     evita que el número de escrituras crezca sin límite a medida
+     que se acumulan recorridos con los años.
    ================================================================ */
 const FirebaseSync = (function(){
   let db = null, ready = false;
   const COL = { meta:'meta', questions:'questions', runs:'runs' };
   const LOCAL_KEY = 'mantcap_db_v3';
   const LASTSYNC_KEY = 'mantcap_lastsync';
+  const FP_KEY = 'mantcap_pushed_fp'; // huellas de lo último subido a Firestore
 
   /* ¿Está configurado el proyecto? */
   function isConfigured(){
@@ -36,6 +43,26 @@ const FirebaseSync = (function(){
   }
   function setLastSync(){
     try{ localStorage.setItem(LASTSYNC_KEY,new Date().toISOString()); }catch(_){}
+  }
+
+  /* ---------- Huellas de documentos ya subidos (v3.3) ---------- */
+  function loadFP(){
+    try{
+      const raw = localStorage.getItem(FP_KEY);
+      const fp = raw ? JSON.parse(raw) : null;
+      return (fp && fp.questions && fp.runs) ? fp : { questions:{}, runs:{} };
+    }catch(_){ return { questions:{}, runs:{} }; }
+  }
+  function saveFP(fp){
+    try{ localStorage.setItem(FP_KEY, JSON.stringify(fp)); }catch(_){}
+  }
+  /* Hash simple y rápido (no criptográfico) — solo necesita detectar
+     si el contenido de un documento cambió desde el último push. */
+  function fingerprint(obj){
+    const s = JSON.stringify(obj);
+    let h = 0;
+    for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) | 0; }
+    return h + ':' + s.length;
   }
 
   function init(){
@@ -179,10 +206,15 @@ const FirebaseSync = (function(){
     }
   }
 
+  /* v3.3: solo sube a Firestore los documentos (preguntas / recorridos)
+     cuyo contenido cambió desde el último push exitoso. El documento
+     /meta/mantcap se sigue subiendo siempre porque es pequeño y no
+     crece con el historial. */
   async function doPush(DB){
     if(!ready || !DB) return;
-    /* Firestore: máx. 500 operaciones por batch → fragmentamos */
+    const fp = loadFP();
     const ops = [];
+
     ops.push({
       ref: db.collection(COL.meta).doc('mantcap'),
       data: {
@@ -193,12 +225,25 @@ const FirebaseSync = (function(){
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }
     });
-    DB.questions.forEach(q => ops.push({ ref: db.collection(COL.questions).doc(q.id), data: q }));
-    DB.runs.forEach(r => ops.push({ ref: db.collection(COL.runs).doc(r.id), data: r }));
 
-    /* v3.2: borrar de la nube las preguntas eliminadas en la app
-       (duplicadas o borradas a mano). Solo se borran los ids anotados
-       en DB.deletedQ que ya no existen en la lista de preguntas. */
+    const newQFP = {}, newRFP = {};
+    let skippedQ = 0, skippedR = 0;
+
+    DB.questions.forEach(q => {
+      const h = fingerprint(q);
+      newQFP[q.id] = h;
+      if(fp.questions[q.id] === h){ skippedQ++; return; } // sin cambios → no se sube
+      ops.push({ ref: db.collection(COL.questions).doc(q.id), data: q });
+    });
+
+    DB.runs.forEach(r => {
+      const h = fingerprint(r);
+      newRFP[r.id] = h;
+      if(fp.runs[r.id] === h){ skippedR++; return; } // sin cambios → no se sube
+      ops.push({ ref: db.collection(COL.runs).doc(r.id), data: r });
+    });
+
+    /* borrar de la nube las preguntas eliminadas en la app */
     const liveIds = new Set(DB.questions.map(q => q.id));
     const toDelete = (DB.deletedQ || []).filter(id => id && !liveIds.has(id));
     toDelete.forEach(id => ops.push({ ref: db.collection(COL.questions).doc(id), del: true }));
@@ -208,11 +253,18 @@ const FirebaseSync = (function(){
       ops.slice(i, i + 400).forEach(o => o.del ? batch.delete(o.ref) : batch.set(o.ref, o.data));
       await batch.commit();
     }
+
+    /* Actualizar huellas SOLO después de que el push tuvo éxito */
+    toDelete.forEach(id => { delete newQFP[id]; });
+    saveFP({ questions: newQFP, runs: newRFP });
+
     if(toDelete.length){
       DB.deletedQ = [];
       console.log('[FirebaseSync] 🧹 ' + toDelete.length + ' preguntas eliminadas de la nube');
     }
-    console.log('[FirebaseSync] ✓ Guardado en la nube (' + (ops.length - toDelete.length) + ' documentos)');
+    const written = ops.length - toDelete.length;
+    console.log('[FirebaseSync] ✓ Guardado en la nube: ' + written + ' documento(s) escrito(s), ' +
+      (skippedQ + skippedR) + ' sin cambios (no se reescribieron).');
   }
 
   return { init, pull, push, syncNow, isConfigured, isOnline, lastSync };

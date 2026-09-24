@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">E
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -322,7 +322,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
       <div class="fld"><label>PIN</label><input id="lpin" type="password" value="1234"></div>
       <button class="btn btn-pri" style="width:100%" onclick="doLogin()">Iniciar sesión</button>
     </div>
-    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.16</b></div>
+    <div class="demo"><b>Demo:</b> admin / admin123 · Técnicos PIN 1234 · <b style="color:#0e5fd8">v2.17</b></div>
   </div>
 </div>
 
@@ -376,7 +376,7 @@ table.tb{width:100%;border-collapse:collapse;font-size:13px}
    v2.5–2.6 — Firebase, informes, gráficas comparativas
    v1.4–1.9 — UPS entrada/salida, acordeón, averías, cronómetro
    ================================================================ */
-const APP_VERSION='v2.16';
+const APP_VERSION='v2.17';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
@@ -1631,6 +1631,40 @@ function keepSection(loc,name){
   extraSecs().push({loc,name});
 }
 
+/* ---------- Orden de categorias (v2.17) ---------- */
+const secOrderOf=loc=>{
+  if(!DB.settings) DB.settings={pinned:[]};
+  if(!DB.settings.secOrder||typeof DB.settings.secOrder!=='object') DB.settings.secOrder={};
+  if(!Array.isArray(DB.settings.secOrder[loc])) DB.settings.secOrder[loc]=[];
+  return DB.settings.secOrder[loc];
+};
+/* Ordena nombres de categoria segun el orden guardado; las que no esten
+   en la lista conservan su orden original y van al final. */
+function sortSecNames(loc,names){
+  const ord=secOrderOf(loc);
+  return names.map((n,i)=>({n,k:ord.indexOf(n)>=0?ord.indexOf(n):1e6+i}))
+    .sort((a,b)=>a.k-b.k).map(x=>x.n);
+}
+/* Todas las categorias de un sitio (con preguntas o vacias), ya ordenadas */
+function allSecNames(loc){
+  const names=[...new Set([
+    ...DB.questions.filter(q=>q.loc===loc).map(q=>q.section),
+    ...extraSecs().filter(e=>e.loc===loc).map(e=>e.name)])];
+  return sortSecNames(loc,names);
+}
+function secMove(i,dir){
+  const s=secCache[i]; if(!s) return;
+  const full=allSecNames(s.loc);
+  const a=full.indexOf(s.name), b=a+dir;
+  if(a<0||b<0||b>=full.length) return;
+  [full[a],full[b]]=[full[b],full[a]];
+  secOrderOf(s.loc); DB.settings.secOrder[s.loc]=full;
+  saveDB();
+  renderQuestionsList();
+  const j=secCache.findIndex(x=>x.loc===s.loc&&x.name===s.name);
+  document.getElementById('secrow_'+j)?.scrollIntoView({block:'center',behavior:'smooth'});
+}
+
 function renderQuestions(){
   $('#content').innerHTML=`${locBar(`<input id="qSearch" placeholder="Buscar pregunta o categoría…" value="${esc(qSearch)}" oninput="qSearch=this.value;renderQuestionsList()">`)}
   <div class="card" id="qCard"></div>`;
@@ -1653,6 +1687,11 @@ function renderQuestionsList(){
     if(term&&!String(e.name).toLowerCase().includes(term)) return;
     add(e.loc,e.name);
   });
+  const locOrder=[...new Set(secs.map(s=>s.loc))];
+  const rank=new Map(), maxRank={};
+  locOrder.forEach(l=>{const a=allSecNames(l);maxRank[l]=a.length-1;a.forEach((n,k)=>rank.set(l+'||'+n,k));});
+  secs.forEach(s=>{s.rank=rank.get(s.loc+'||'+s.name);s.max=maxRank[s.loc];});
+  secs.sort((a,b)=>locOrder.indexOf(a.loc)-locOrder.indexOf(b.loc)||a.rank-b.rank);
   secCache=secs.map(s=>({loc:s.loc,name:s.name}));
 
   el.innerHTML=`<div class="hd"><h3>Preguntas (${list.length}) · Categorías (${secs.length})</h3>
@@ -1664,10 +1703,12 @@ function renderQuestionsList(){
   ${secs.map((s,i)=>{
     const nAct=s.qs.filter(q=>q.active).length;
     return `<div>
-      <div class="sec-row-hd">
+      <div class="sec-row-hd" id="secrow_${i}">
         <b>${esc(s.name)}</b> ${locBadge(s.loc)}
         <span class="cnt-mini">${s.qs.length} pregunta${s.qs.length===1?'':'s'}${s.qs.length&&!nAct?' · todas inactivas':''}</span>
         <span class="sec-row-act">
+          ${!term?`<button class="btn btn-gho btn-sm" title="Subir" ${s.rank===0?'disabled':''} onclick="secMove(${i},-1)">&#9650;</button>
+          <button class="btn btn-gho btn-sm" title="Bajar" ${s.rank===s.max?'disabled':''} onclick="secMove(${i},1)">&#9660;</button>`:''}
           <button class="btn btn-gho btn-sm" onclick="editQModal(null,${i})">+ Pregunta</button>
           <button class="btn btn-gho btn-sm" onclick="secModal(${i})">Renombrar</button>
           ${s.qs.length?`<button class="btn btn-gho btn-sm" onclick="secToggle(${i})">${nAct?'Desactivar todas':'Activar todas'}</button>`:''}
@@ -1723,6 +1764,7 @@ function saveSection(idx){
       }
     });
     extraSecs().forEach(e=>{ if(e.loc===loc&&e.name===oldName) e.name=name; });
+    { const ord=secOrderOf(loc), k=ord.indexOf(oldName); if(k>=0) ord[k]=name; }
     saveDB();toast('Categoría renombrada','ok');
   }else{
     const loc=$('#scLoc').value;
@@ -1750,6 +1792,7 @@ function secDelete(i){
       DB.questions=DB.questions.filter(q=>!ids.has(q.id));
       DB.deletedQ=[...new Set([...(DB.deletedQ||[]),...ids])];
       DB.settings.extraSections=extraSecs().filter(e=>!(e.loc===s.loc&&e.name===s.name));
+      { const o=secOrderOf(s.loc).filter(n=>n!==s.name); DB.settings.secOrder[s.loc]=o; }
       saveDB();toast('Categoría eliminada','ok');renderQuestionsList();
     },'Eliminar');
 }
@@ -1892,7 +1935,7 @@ function delRun(id){
 function openRunModal(id){
   const r=DB.runs.find(x=>x.id===id); if(!r) return;
   const qs=DB.questions.filter(q=>r.answers&&r.answers[q.id]!=null&&r.answers[q.id]!=='');
-  const secs=[...new Set(qs.map(q=>q.section))];
+  const secs=sortSecNames(r.loc,[...new Set(qs.map(q=>q.section))]);
   const oorMap=new Map((r.outOfRange||[]).map(a=>[a.qid,a]));
   modal(`<div class="mh"><h3>Recorrido ${fmtDT(r.date)} ${locBadge(r.loc)}</h3><button class="x" onclick="closeModal()">×</button></div>
   <div class="mb">
@@ -1925,7 +1968,8 @@ function exportRunPDF(id){
   doc.text(P(`Ubicación: ${r.loc}    Fecha: ${fmtDT(r.date)}`),14,24);
   doc.text(P(`Técnico: ${r.techName}    Ticket: ${r.ticket}`),14,29);
   doc.text(P(`Duración del recorrido: ${fmtDur(runDur(r))}`),14,34);
-  const qs=DB.questions.filter(q=>r.answers&&r.answers[q.id]!=null&&r.answers[q.id]!=='');
+  const qsRaw=DB.questions.filter(q=>r.answers&&r.answers[q.id]!=null&&r.answers[q.id]!=='');
+  const qs=sortSecNames(r.loc,[...new Set(qsRaw.map(q=>q.section))]).flatMap(sn=>qsRaw.filter(q=>q.section===sn));
   const oorMap=new Map((r.outOfRange||[]).map(a=>[a.qid,a]));
   const rows=qs.map(q=>{const a=oorMap.get(q.id);
     const rep=a?[(a.confirmed?'Avería reportada.':''),(a.note||'')].filter(Boolean).join(' '):'';
@@ -2123,6 +2167,7 @@ function renderSettings(){
     </div></div>
     <div class="card" style="grid-column:1/-1"><div class="hd"><h3>Acerca de</h3></div><div class="bd" style="font-size:13px;color:var(--mut);line-height:1.8">
       <b style="color:var(--ink)">MantCAP ${APP_VERSION}</b> · Gestión de mantenimiento CAP & CPP<br>
+      <b style="color:var(--ink)">v2.17:</b> las categorias de preguntas se pueden ordenar (subir/bajar) y el orden se refleja en el recorrido del tecnico.<br>
       <b style="color:var(--ink)">v2.16:</b> categorías de preguntas editables (crear, renombrar, eliminar) y alertas legibles en horizontal.<br>
       <b style="color:var(--ink)">v2.15:</b> la app se adapta a pantalla vertical y horizontal; resumen sin cortes en PC.<br>
       <b style="color:var(--ink)">v2.14:</b> limpieza automática de preguntas duplicadas y botón para eliminar preguntas.<br>
@@ -2267,7 +2312,7 @@ function updateFormProgress(){
 }
 function drawForm(){
   const qs=activeQs(formState.loc);
-  const secs=[...new Set(qs.map(q=>q.section))];
+  const secs=sortSecNames(formState.loc,[...new Set(qs.map(q=>q.section))]);
   secNames=secs;
   formState.openSecs=formState.openSecs||{};
   $('#pageTitle').textContent='Recorrido '+formState.loc;
